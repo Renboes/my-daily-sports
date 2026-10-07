@@ -108,10 +108,12 @@ async function nba() {
 
 const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
 
-// Football via le service public d'ESPN (sans clé). slug : fra.1 = Ligue 1, fra.2 = Ligue 2, uefa.nations = Ligue des Nations
+// Football et rugby via le service public d'ESPN (sans clé).
+// sport "soccer" : fra.1 = Ligue 1, fra.2 = Ligue 2, uefa.nations = Ligue des Nations
+// sport "rugby" : 270559 = Top 14, 271937 = Coupe d'Europe, 180659 = Six Nations
 let rangeBroken = false;
-async function espnWindow(slug, a, b) {
-  const base = `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=`;
+async function espnWindow(sport, slug, a, b) {
+  const base = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${slug}/scoreboard?dates=`;
   if (!rangeBroken) {
     try { return (await get(base + ymd(a) + "-" + ymd(b))).events || []; }
     catch (e) {
@@ -128,18 +130,18 @@ async function espnWindow(slug, a, b) {
   return out;
 }
 
-async function espn(slug, l, label) {
-  const seen = new Map(), start = new Date();
-  start.setDate(start.getDate() - 2);
-  const end = new Date(Date.UTC(start.getUTCFullYear() + (start.getUTCMonth() >= 6 ? 1 : 0), 5, 30));
+async function espn(sport, slug, l, label, win) {
+  const seen = new Map(), now = new Date();
+  const start = win ? win[0] : new Date(now - 2 * 864e5);
+  const end = win ? win[1] : new Date(Date.UTC(now.getUTCFullYear() + (now.getUTCMonth() >= 6 ? 1 : 0), 5, 30));
   const days = +process.env.ESPN_DAYS || 120;
   for (let a = new Date(start); a < end; a.setDate(a.getDate() + 14)) {
-    if (rangeBroken && +a > +start + days * 864e5) break;
+    if (!win && rangeBroken && +a > +start + days * 864e5) break;
     const b = new Date(Math.min(+a + 13 * 864e5, +end));
-    for (const e of await espnWindow(slug, new Date(a), b)) {
-      const c = e.competitions && e.competitions[0];
-      const h = c && c.competitors.find(x => x.homeAway === "home"), v = c && c.competitors.find(x => x.homeAway === "away");
-      if (!h || !v || !e.date) continue;
+    for (const e of await espnWindow(sport, slug, new Date(a), b)) {
+      const c = e.competitions && e.competitions[0], cs = (c && c.competitors) || [];
+      const h = cs.find(x => x.homeAway === "home") || cs[0], v = cs.find(x => x.homeAway === "away") || cs[1];
+      if (!h || !v || !h.team || !v.team || !e.date) continue;
       const nm = x => x.team.shortDisplayName || x.team.displayName;
       const { d, t } = paris(e.date);
       seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: (c.venue && c.venue.fullName) || label });
@@ -152,10 +154,14 @@ async function main() {
   const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
   let events = data.events, fails = 0;
   const real = new Set(data.real || []);
+  const sy = new Date().getUTCFullYear() + (new Date().getUTCMonth() >= 6 ? 1 : 0);
   const sources = [["f1", f1], ["nba", nba],
-    ["l1", () => espn("fra.1", "l1", "Ligue 1")],
-    ["l2", () => espn("fra.2", "l2", "Ligue 2")],
-    ["ldn", () => espn("uefa.nations", "ldn", "Ligue des Nations")]];
+    ["l1", () => espn("soccer", "fra.1", "l1", "Ligue 1")],
+    ["l2", () => espn("soccer", "fra.2", "l2", "Ligue 2")],
+    ["ldn", () => espn("soccer", "uefa.nations", "ldn", "Ligue des Nations")],
+    ["rt14", () => espn("rugby", "270559", "rt14", "Top 14")],
+    ["rec", () => espn("rugby", "271937", "rec", "Coupe d'Europe")],
+    ["r6n", () => espn("rugby", "180659", "r6n", "Six Nations", [new Date(Date.UTC(sy, 0, 25)), new Date(Date.UTC(sy, 2, 31))])]];
   for (const [l, fn] of sources) {
     try {
       const fresh = await fn();
