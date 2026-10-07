@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="My Daily Sports">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#15110f">
 <title>My Daily Sports</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#eceff4;--card:#fff;--ink:#121826;--mut:#667085;--line:#d9dee7}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1118;--card:#171c26;--ink:#eef1f6;--mut:#9aa4b5;--line:#283040}}
-:root[data-theme="dark"]{--bg:#0d1118;--card:#171c26;--ink:#eef1f6;--mut:#9aa4b5;--line:#283040}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f7efe4;--card:#fffaf3;--ink:#1d1712;--mut:#7a6a5a;--line:#e6d8c6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15110f;--card:#1f1915;--ink:#f6efe7;--mut:#a8998a;--line:#352b24}}
+:root[data-theme="dark"]{--bg:#15110f;--card:#1f1915;--ink:#f6efe7;--mut:#a8998a;--line:#352b24}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.35 "Barlow Condensed","Arial Narrow",system-ui,sans-serif}
@@ -50,11 +54,23 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 .row{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--card));border-radius:6px;padding:8px 10px;margin:6px 0;cursor:pointer;font-weight:600}
 .x{margin-top:12px}
 .date{margin:0 0 14px;color:var(--mut);font-size:21px;font-weight:600;text-transform:capitalize}
-.go{display:block;width:100%;border:0;border-radius:12px;background:var(--ink);color:var(--bg);font:700 22px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:14px;cursor:pointer;margin:0 0 8px}
+.go{display:block;width:100%;border:0;border-radius:12px;background:linear-gradient(110deg,#f43f5e,#f97316 55%,#fbbf24);color:#1a0f0a;font:700 22px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:14px;cursor:pointer;margin:0 0 8px}
 .go:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .sec{font-size:24px;margin:22px 0 6px;font-weight:700}
 .back{margin-bottom:10px}
 .empty{color:var(--mut);margin:6px 0}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.brand .date{margin:0;font-size:19px}
+.logo{border-radius:12px;flex:none}
+.hello{font-size:23px;font-weight:600;margin:4px 0 16px;line-height:1.2}
+.hk0{font-size:15px;font-weight:600;color:var(--mut);margin:0 0 6px}
+.hero{display:flex;gap:14px;align-items:center;width:100%;text-align:left;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));border-left:5px solid var(--c);border-radius:16px;padding:14px 16px;background:linear-gradient(120deg,color-mix(in srgb,var(--c) 22%,var(--card)),var(--card));cursor:pointer;margin-bottom:14px}
+.hero:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.he{font-size:42px;line-height:1}
+.hb{display:flex;flex-direction:column;min-width:0}
+.hk{font-size:15px;font-weight:700;color:var(--mut)}
+.ht{font-size:25px;font-weight:700;line-height:1.15}
+.hl{font-size:15px;color:var(--mut)}
 #home .note{margin-top:22px}
 @media (min-width:720px){.s{display:none}.f{display:inline}.cell{min-height:112px}.wrap{padding:24px 16px 40px}h1{font-size:38px}.ov{align-items:center}}
 </style>
@@ -62,8 +78,9 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 <body>
 <div class="wrap">
 <section id="home">
-<h1>My Daily Sports</h1>
-<p class="date" id="today"></p>
+<header class="brand"><img class="logo" src="favicon.svg" alt="" width="54" height="54"><div><h1>My Daily Sports</h1><p class="date" id="today"></p></div></header>
+<p class="hello" id="hello"></p>
+<div id="hero"></div>
 <button class="go" data-go="cal">📅 Ouvrir le calendrier</button>
 <h2 class="sec">Au programme aujourd'hui</h2>
 <div id="tl"></div>
@@ -146,11 +163,15 @@ $("#next").disabled=y===Y+1&&m===11;
 const tk=()=>key(now.getFullYear(),now.getMonth(),now.getDate());
 const sd=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})};
 const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
+const hero=(e,k)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">Prochain rendez-vous</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
 function home(){
+const h=now.getHours(),g=h>=18||h<5?"Bonsoir":h<12?"Bonjour":"Bon après-midi",k=tk(),hm=pad(h)+":"+pad(now.getMinutes());
 $("#today").textContent=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-const k=tk(),td=EV.filter(e=>e.d===k),nx=EV.filter(e=>e.d>k).slice(0,6);
-$("#tl").innerHTML=td.length?td.map(e=>rw(e)).join(""):'<p class="empty">Rien au programme aujourd\'hui.</p>';
-$("#nx").innerHTML=nx.map(e=>rw(e,1)).join("");
+const td=EV.filter(e=>e.d===k),nx=EV.filter(e=>e.d>k),up=EV.filter(e=>e.d>k||(e.d===k&&(!e.t||e.t>=hm)))[0];
+$("#hello").textContent=g+" ! "+(td.length?(td.length===1?"Un rendez-vous sportif aujourd'hui.":td.length+" rendez-vous sportifs aujourd'hui."):"Pas de sport aujourd'hui, voici la suite.");
+$("#hero").innerHTML=up?hero(up,k):"";
+$("#tl").innerHTML=td.length?td.map(e=>rw(e)).join(""):"<p class=\"empty\">Rien au programme aujourd'hui. Profites-en pour souffler !</p>";
+$("#nx").innerHTML=nx.slice(0,6).map(e=>rw(e,1)).join("");
 }
 function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";scrollTo(0,0);if(v==="cal")grid()}
 const ov=$("#ov"),box=$("#box");
