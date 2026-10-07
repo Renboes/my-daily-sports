@@ -54,7 +54,7 @@ async function f1() {
   return out;
 }
 
-async function nba() {
+async function nbaSite() {
   const j = await get("https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json", NBA_HEADERS);
   const out = [];
   for (const gd of j.leagueSchedule.gameDates) for (const g of gd.games || []) {
@@ -64,6 +64,42 @@ async function nba() {
     out.push({ d, t, l: "nba", ti: h + " - " + a, de: [g.gameLabel, g.arenaName].filter(Boolean).join(", ") || "NBA" });
   }
   return out;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Source de secours : balldontlie (clé gratuite, 5 requêtes par minute)
+async function nbaBdl(key) {
+  const out = [], now = new Date();
+  const season = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  let cursor = "";
+  for (let i = 0; i < 20; i++) {
+    const q = `seasons[]=${season}&per_page=100` + (cursor ? `&cursor=${cursor}` : "");
+    const H = { Authorization: key };
+    let j;
+    try { j = await get(`https://api.balldontlie.io/nba/v1/games?${q}`, H); }
+    catch (e) { if (!/404/.test(e.message)) throw e; j = await get(`https://api.balldontlie.io/v1/games?${q}`, H); }
+    for (const g of j.data || []) {
+      const h = g.home_team && g.home_team.name, a = g.visitor_team && g.visitor_team.name;
+      if (!h || !a) continue;
+      const iso = g.datetime || (/^\d{4}-\d\d-\d\dT/.test(g.status || "") ? g.status : null);
+      const x = iso ? paris(iso) : { d: String(g.date).slice(0, 10), t: "" };
+      out.push({ d: x.d, t: x.t, l: "nba", ti: h + " - " + a, de: "NBA" });
+    }
+    cursor = j.meta && j.meta.next_cursor;
+    if (!cursor) break;
+    await sleep(13000);
+  }
+  return out;
+}
+
+async function nba() {
+  const key = process.env.BALLDONTLIE_KEY;
+  if (key) {
+    try { return await nbaBdl(key); }
+    catch (e) { console.error("balldontlie :", e.message); }
+  }
+  return nbaSite();
 }
 
 async function main() {
