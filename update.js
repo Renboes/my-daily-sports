@@ -21,8 +21,15 @@ const FR = [["singapore","de Singapour"],["united states","des États-Unis"],["m
   ["azerbaijan","d'Azerbaïdjan"],["bahrain","de Bahreïn"],["saudi","d'Arabie saoudite"]];
 const gp = n => { const k = n.toLowerCase(); const f = FR.find(([w]) => k.includes(w)); return f ? "Grand Prix " + f[1] : n; };
 
-const get = async url => {
-  const r = await fetch(url, { headers: { "User-Agent": "my-daily-sports" } });
+const NBA_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Referer": "https://www.nba.com/",
+  "Origin": "https://www.nba.com"
+};
+const get = async (url, headers = { "User-Agent": "my-daily-sports" }) => {
+  const r = await fetch(url, { headers });
   if (!r.ok) throw new Error(url + " -> HTTP " + r.status);
   return r.json();
 };
@@ -48,7 +55,7 @@ async function f1() {
 }
 
 async function nba() {
-  const j = await get("https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json");
+  const j = await get("https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json", NBA_HEADERS);
   const out = [];
   for (const gd of j.leagueSchedule.gameDates) for (const g of gd.games || []) {
     const h = g.homeTeam && g.homeTeam.teamName, a = g.awayTeam && g.awayTeam.teamName;
