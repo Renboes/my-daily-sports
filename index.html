@@ -117,7 +117,8 @@ $("#leagues").innerHTML=ls.length>1?[["all","Toutes les ligues"],...ls.map(([k,v
 const ts=lg==="all"?[]:[...new Set(EV.filter(e=>e.l===lg).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
 $("#teams").innerHTML=ts.length?[["all","Toutes les équipes"],...ts.map(x=>[x,x])].map(([k,n])=>`<button class="chip" aria-pressed="${tm===k}" data-tm="${k}">${n}</button>`).join(""):"";
 }
-const chip=e=>{const l=L[e.l];return `<button class="ev" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
+const chip=(k,es)=>{const e=es[0],l=L[e.l];return `<button class="ev" style="--c:${l.c}" data-g="${k}|${e.l}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
+const unit=l=>/^(foot|basket)$/.test(L[l].sp)?"matchs":"sessions";
 function grid(){
 const{y,m}=cur,map={};
 $("#mt").textContent=new Date(y,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
@@ -127,8 +128,8 @@ let h="";
 for(let i=0;i<Math.ceil((off+n)/7)*7;i++){
 const d=i-off+1;
 if(d<1||d>n){h+='<div class="cell out"></div>';continue}
-const k=key(y,m,d),es=map[k]||[];
-h+=`<div class="cell${k===tk?" today":""}"><button class="dn" data-day="${k}">${d}</button>`+es.slice(0,max).map(chip).join("")+(es.length>max?`<button class="more" data-day="${k}">+${es.length-max}</button>`:"")+"</div>";
+const k=key(y,m,d),es=map[k]||[],gs=Object.values(es.reduce((a,e)=>((a[e.l]=a[e.l]||[]).push(e),a),{}));
+h+=`<div class="cell${k===tk?" today":""}"><button class="dn" data-day="${k}">${d}</button>`+gs.slice(0,max).map(g=>chip(k,g)).join("")+(gs.length>max?`<button class="more" data-day="${k}">+${gs.length-max}</button>`:"")+"</div>";
 }
 $("#grid").innerHTML=h;
 $("#prev").disabled=y===Y&&m===0;
@@ -147,7 +148,8 @@ function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";scrollTo(
 const ov=$("#ov"),box=$("#box");
 function show(h){box.innerHTML=h+'<button class="chip x" data-x>Fermer</button>';ov.hidden=false}
 function detail(i){const e=EV[i],l=L[e.l];show(`<div class="badge" style="--c:${l.c}">${SP[l.sp].e}</div><h3>${e.ti}</h3><p class="meta">${dl(e.d)}${e.t?", "+hh(e.t):""}</p><p><span class="tag" style="--c:${l.c}">${l.n}</span></p><p>${e.de}</p>${l.r?"":"<p class=\"meta\">Donnée d'exemple, à remplacer par la vraie.</p>"}`)}
-function day(k){const es=vis().filter(e=>e.d===k);show(`<h3>${dl(k)}</h3>`+(es.length?es.map(e=>`<button class="row" style="--c:${L[e.l].c}" data-ev="${EV.indexOf(e)}">${e.t?hh(e.t)+", ":""}${L[e.l].f} : ${e.ti}</button>`).join(""):'<p class="meta">Aucun événement ce jour-là.</p>'))}
+function grp(s){const[k,l]=s.split("|"),es=vis().filter(e=>e.d===k&&e.l===l);if(es.length===1)return detail(EV.indexOf(es[0]));show(`<h3>${L[l].f}</h3><p class="meta">${dl(k)}, ${es.length} ${unit(l)}</p>`+es.map(e=>`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(e)}">${e.t?hh(e.t)+", ":""}${e.ti}</button>`).join(""))}
+function day(k){const es=vis().filter(e=>e.d===k),G={};es.forEach(e=>(G[e.l]=G[e.l]||[]).push(e));show(`<h3>${dl(k)}</h3>`+(es.length?Object.entries(G).map(([l,g])=>g.length===1?`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(g[0])}">${g[0].t?hh(g[0].t)+", ":""}${L[l].f} : ${g[0].ti}</button>`:`<button class="row" style="--c:${L[l].c}" data-g="${k}|${l}">${SP[L[l].sp].e} ${L[l].f}, ${g.length} ${unit(l)}</button>`).join(""):'<p class="meta">Aucun événement ce jour-là.</p>'))}
 document.addEventListener("click",ev=>{
 const t=ev.target;
 if(t===ov||t.closest("[data-x]")){ov.hidden=true;return}
@@ -159,6 +161,7 @@ else if(D.tm){tm=D.tm;filters();grid()}
 else if(D.ev!==undefined)detail(+D.ev);
 else if(D.day)day(D.day);
 else if(D.go)go(D.go);
+else if(D.g)grp(D.g);
 else if(b.id==="prev"){cur.m--;if(cur.m<0){cur.m=11;cur.y--}grid()}
 else if(b.id==="next"){cur.m++;if(cur.m>11){cur.m=0;cur.y++}grid()}
 else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
