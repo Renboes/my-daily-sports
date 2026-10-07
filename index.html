@@ -53,12 +53,23 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 .tag{display:inline-block;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 18%,var(--card));padding:1px 8px;border-radius:4px;font-weight:700}
 .row{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--card));border-radius:6px;padding:8px 10px;margin:6px 0;cursor:pointer;font-weight:600}
 .x{margin-top:12px}
-.date{margin:0 0 14px;color:var(--mut);font-size:21px;font-weight:600;text-transform:capitalize}
+.date{margin:0 0 14px;color:var(--mut);font-size:21px;font-weight:600}.date::first-letter{text-transform:uppercase}
 .go{display:block;width:100%;border:0;border-radius:12px;background:linear-gradient(110deg,#f43f5e,#f97316 55%,#fbbf24);color:#1a0f0a;font:700 22px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:14px;cursor:pointer;margin:0 0 8px}
 .go:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .sec{font-size:24px;margin:22px 0 6px;font-weight:700}
 .back{margin-bottom:10px}
 .empty{color:var(--mut);margin:6px 0}
+.sm{padding:2px 10px;font-size:14px}
+.sph{display:flex;align-items:center;gap:6px;margin:16px 0 4px}.sph b{flex:1;font-size:18px}
+.lgr{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.lgr label{flex:1;display:flex;gap:8px;align-items:center;cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.star{background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:var(--mut);padding:0 4px}
+.star[aria-pressed="true"]{color:#f59e0b}
+input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
+#tq{width:100%;padding:9px 12px;margin:6px 0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.cfg{display:block;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;font:600 17px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 6px}
+.topbar{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}
 .brand{display:flex;align-items:center;gap:14px;margin-bottom:12px}
 .brand .date{margin:0;font-size:19px}
 .logo{border-radius:12px;flex:none}
@@ -82,15 +93,17 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 <p class="hello" id="hello"></p>
 <div id="hero"></div>
 <button class="go" data-go="cal">📅 Ouvrir le calendrier</button>
+<button class="cfg" id="cfg">⚙️ Mes compétitions et mes favoris</button>
 <h2 class="sec">Au programme aujourd'hui</h2>
 <div id="tl"></div>
+<div id="fv"></div>
 <h2 class="sec">Prochainement</h2>
 <div id="nx"></div>
 <p class="note" id="src"></p>
 <p class="note" id="upd"></p>
 </section>
 <section id="cal" hidden>
-<button class="nb back" data-go="home">‹ Accueil</button>
+<div class="topbar"><button class="nb" data-go="home">‹ Accueil</button><button class="nb" id="cfg2">⚙️ Personnaliser</button></div>
 <div id="sports" class="chips"></div>
 <div id="leagues" class="chips"></div>
 <div id="teams" class="chips sc"></div>
@@ -141,14 +154,20 @@ const now=new Date(),Y=now.getFullYear();
 let cur={y:Y,m:now.getMonth()};
 const key=(y,m,d)=>y+"-"+pad(m+1)+"-"+pad(d);
 const teams=e=>/^(foot|basket|rugby|usfoot|hockey)$/.test(L[e.l].sp)&&e.ti.includes(" - ")?e.ti.split(" - "):[];
-const vis=()=>EV.filter(e=>(sp==="all"||L[e.l].sp===sp)&&(lg==="all"||e.l===lg)&&(tm==="all"||teams(e).includes(tm)));
+const lsg=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){return[]}};
+const hid=new Set(lsg("mds_hid")),fl=new Set(lsg("mds_fl")),ft=new Set(lsg("mds_ft"));
+const sv=()=>{try{localStorage.setItem("mds_hid",JSON.stringify([...hid]));localStorage.setItem("mds_fl",JSON.stringify([...fl]));localStorage.setItem("mds_ft",JSON.stringify([...ft]))}catch(e){}};
+let fav=false;
+const isFav=e=>fl.has(e.l)||teams(e).some(t=>ft.has(t)),hasFav=()=>fl.size+ft.size>0;
+const vis=()=>EV.filter(e=>!hid.has(e.l)&&(fav?isFav(e):(sp==="all"||L[e.l].sp===sp)&&(lg==="all"||e.l===lg)&&(tm==="all"||teams(e).includes(tm))));
 const dl=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})};
 const hh=t=>t.replace(":","h");
 function filters(){
-$("#sports").innerHTML=[["all","Tout","📅"],...Object.entries(SP).map(([k,v])=>[k,v.n,v.e])].map(([k,n,e])=>`<button class="chip" aria-pressed="${sp===k}" data-sp="${k}">${e} ${n}</button>`).join("");
-const ls=Object.entries(L).filter(([k,v])=>v.sp===sp);
+const sps=Object.entries(SP).filter(([k])=>Object.entries(L).some(([x,l])=>l.sp===k&&!hid.has(x)));
+$("#sports").innerHTML=[["all","Tout","📅"],...(hasFav()?[["fav","Mes favoris","⭐"]]:[]),...sps.map(([k,v])=>[k,v.n,v.e])].map(([k,n,e])=>`<button class="chip" aria-pressed="${k==="fav"?fav:!fav&&sp===k}" data-sp="${k}">${e} ${n}</button>`).join("");
+const ls=fav?[]:Object.entries(L).filter(([k,v])=>v.sp===sp&&!hid.has(k));
 $("#leagues").innerHTML=ls.length>1?[["all","Toutes les ligues"],...ls.map(([k,v])=>[k,v.f])].map(([k,n])=>`<button class="chip" aria-pressed="${lg===k}" data-lg="${k}">${n}</button>`).join(""):"";
-const ts=lg==="all"?[]:[...new Set(EV.filter(e=>e.l===lg).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
+const ts=fav||lg==="all"?[]:[...new Set(EV.filter(e=>e.l===lg).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
 $("#teams").innerHTML=ts.length?[["all","Toutes les équipes"],...ts.map(x=>[x,x])].map(([k,n])=>`<button class="chip" aria-pressed="${tm===k}" data-tm="${k}">${n}</button>`).join(""):"";
 }
 const chip=(k,es)=>{const e=es[0],l=L[e.l];return `<button class="ev" style="--c:${l.c}" data-g="${k}|${e.l}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
@@ -171,16 +190,36 @@ $("#next").disabled=y===Y+1&&m===11;
 }
 const tk=()=>key(now.getFullYear(),now.getMonth(),now.getDate());
 const sd=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})};
-const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
-const hero=(e,k)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">Prochain rendez-vous</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
+const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${isFav(e)?"⭐ ":""}${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
+const hero=(e,k,f)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">${f?"Prochain parmi mes favoris":"Prochain rendez-vous"}</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
 function home(){
 const h=now.getHours(),g=h>=18||h<5?"Bonsoir":h<12?"Bonjour":"Bon après-midi",k=tk(),hm=pad(h)+":"+pad(now.getMinutes());
 $("#today").textContent=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-const td=EV.filter(e=>e.d===k),nx=EV.filter(e=>e.d>k),up=EV.filter(e=>e.d>k||(e.d===k&&(!e.t||e.t>=hm)))[0];
+const vs=EV.filter(e=>!hid.has(e.l)),fv=hasFav()?vs.filter(isFav):[],up=a=>a.filter(e=>e.d>k||(e.d===k&&(!e.t||e.t>=hm)));
+const td=vs.filter(e=>e.d===k),nx=vs.filter(e=>e.d>k),uf=up(fv)[0],hh1=uf||up(vs)[0];
 $("#hello").textContent=g+" ! "+(td.length?(td.length===1?"Un rendez-vous sportif aujourd'hui.":td.length+" rendez-vous sportifs aujourd'hui."):"Pas de sport aujourd'hui, voici la suite.");
-$("#hero").innerHTML=up?hero(up,k):"";
+$("#hero").innerHTML=hh1?hero(hh1,k,!!uf):"";
 $("#tl").innerHTML=td.length?td.map(e=>rw(e)).join(""):"<p class=\"empty\">Rien au programme aujourd'hui. Profites-en pour souffler !</p>";
+$("#fv").innerHTML=fv.length?'<h2 class="sec">Mes favoris</h2>'+up(fv).slice(0,6).map(e=>rw(e,1)).join(""):"";
 $("#nx").innerHTML=nx.slice(0,6).map(e=>rw(e,1)).join("");
+}
+function refresh(){
+if(sp!=="all"&&!Object.entries(L).some(([k,l])=>l.sp===sp&&!hid.has(k)))sp="all";
+if(lg!=="all"&&hid.has(lg))lg="all";
+if(fav&&!hasFav())fav=false;
+filters();grid();home();
+}
+const allTeams=()=>[...new Set(EV.filter(e=>!hid.has(e.l)).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
+function tfav(){$("#tfav").innerHTML=[...ft].map(n=>`<button class="chip sm" aria-pressed="true" data-fx="${n}">${n} ×</button>`).join("")||'<span class="meta">Aucune équipe pour l\'instant.</span>'}
+function tres(){const q=$("#tq").value.trim().toLowerCase();$("#tres").innerHTML=q.length<2?"":(allTeams().filter(n=>n.toLowerCase().includes(q)&&!ft.has(n)).slice(0,10).map(n=>`<button class="chip sm" data-ft="${n}">+ ${n}</button>`).join("")||'<span class="meta">Aucune équipe trouvée.</span>')}
+function cfgOpen(){
+let x='<h3>Mes compétitions</h3><p class="meta">Décoche ce qui ne t\'intéresse pas du tout. L\'étoile marque ce que tu veux suivre en priorité.</p>';
+for(const [s,v] of Object.entries(SP)){
+x+=`<div class="sph"><b>${v.e} ${v.n}</b><button class="chip sm" data-sa="${s}">Tout</button><button class="chip sm" data-sn="${s}">Aucun</button></div>`;
+for(const [k,l] of Object.entries(L))if(l.sp===s)x+=`<div class="lgr"><label><input type="checkbox" data-hid="${k}" data-s="${s}"${hid.has(k)?"":" checked"}><span class="dot" style="--c:${l.c}"></span>${l.f}</label><button class="star" data-fl="${k}" aria-pressed="${fl.has(k)}" aria-label="Favori">★</button></div>`;
+}
+x+='<h3>Mes équipes favorites</h3><input id="tq" placeholder="Chercher une équipe (PSG, Lakers…)" autocomplete="off"><div id="tres" class="chips"></div><div id="tfav" class="chips"></div>';
+show(x);tfav();
 }
 function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";scrollTo(0,0);if(v==="cal")grid()}
 const ov=$("#ov"),box=$("#box");
@@ -191,19 +230,26 @@ function day(k){const es=vis().filter(e=>e.d===k),G={};es.forEach(e=>(G[e.l]=G[e
 document.addEventListener("click",ev=>{
 const t=ev.target;
 if(t===ov||t.closest("[data-x]")){ov.hidden=true;return}
+if(t.dataset&&t.dataset.hid!==undefined){t.checked?hid.delete(t.dataset.hid):hid.add(t.dataset.hid);sv();refresh();return}
 const b=t.closest("button");if(!b)return;
 const D=b.dataset;
-if(D.sp){sp=D.sp;lg="all";tm="all";filters();grid()}
+if(D.sp){fav=D.sp==="fav";sp=fav?"all":D.sp;lg="all";tm="all";filters();grid()}
 else if(D.lg){lg=D.lg;tm="all";filters();grid()}
 else if(D.tm){tm=D.tm;filters();grid()}
 else if(D.ev!==undefined)detail(+D.ev);
 else if(D.day)day(D.day);
 else if(D.go)go(D.go);
 else if(D.g)grp(D.g);
+else if(D.fl){fl.has(D.fl)?fl.delete(D.fl):fl.add(D.fl);b.setAttribute("aria-pressed",fl.has(D.fl));sv();refresh()}
+else if(D.sa||D.sn){const s=D.sa||D.sn;for(const [k,l] of Object.entries(L))if(l.sp===s){D.sa?hid.delete(k):hid.add(k)}document.querySelectorAll('input[data-s="'+s+'"]').forEach(i=>{i.checked=!!D.sa});sv();refresh()}
+else if(D.ft){ft.add(D.ft);sv();tfav();$("#tq").value="";$("#tres").innerHTML="";refresh()}
+else if(D.fx){ft.delete(D.fx);sv();tfav();refresh()}
+else if(b.id==="cfg"||b.id==="cfg2")cfgOpen();
 else if(b.id==="prev"){cur.m--;if(cur.m<0){cur.m=11;cur.y--}grid()}
 else if(b.id==="next"){cur.m++;if(cur.m>11){cur.m=0;cur.y++}grid()}
 else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
 });
+document.addEventListener("input",e=>{if(e.target.id==="tq")tres()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
 addEventListener("resize",grid);
 Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{const mx={};j.events.forEach(e=>{if((j.real||[]).includes(e.l)&&(!mx[e.l]||e.d>mx[e.l]))mx[e.l]=e.d});EV=j.events.concat(m.events.filter(e=>!(mx[e.l]&&e.d<=mx[e.l]))).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.entries(L).filter(([k,l])=>!l.r&&EV.some(e=>e.l===k)).map(([k,l])=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
