@@ -69,7 +69,7 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 <div id="tl"></div>
 <h2 class="sec">Prochainement</h2>
 <div id="nx"></div>
-<p class="note">F1 et NBA : calendriers réels, mis à jour automatiquement. MotoGP : calendrier réel d'octobre à décembre 2026. Football, Betclic Élite et Euroligue : données d'exemple. Heure de Paris.</p>
+<p class="note">F1 et NBA : calendriers réels, mis à jour automatiquement. MotoGP : calendrier réel d'octobre à décembre 2026. Rugby et biathlon : dates clés réelles, sans horaires pour l'instant. Football, Betclic Élite et Euroligue : données d'exemple. Heure de Paris.</p>
 <p class="note" id="upd"></p>
 </section>
 <section id="cal" hidden>
@@ -89,7 +89,7 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 </div>
 <div id="ov" class="ov" hidden><div id="box" class="dlg" role="dialog" aria-modal="true"></div></div>
 <script>
-const SP={foot:{n:"Football",e:"⚽"},basket:{n:"Basketball",e:"🏀"},moto:{n:"MotoGP",e:"🏍️"},f1:{n:"Formule 1",e:"🏎️"}};
+const SP={foot:{n:"Football",e:"⚽"},basket:{n:"Basketball",e:"🏀"},moto:{n:"MotoGP",e:"🏍️"},f1:{n:"Formule 1",e:"🏎️"},rugby:{n:"Rugby",e:"🏉"},biathlon:{n:"Biathlon",e:"🎿"}};
 const L={
 l1:{n:"Ligue 1",s:"L1",f:"Ligue 1",sp:"foot",c:"#2563eb"},
 l2:{n:"Ligue 2",s:"L2",f:"Ligue 2",sp:"foot",c:"#0d9488"},
@@ -98,15 +98,23 @@ nba:{n:"NBA",s:"NBA",f:"NBA",sp:"basket",c:"#ea580c"},
 elite:{n:"Betclic Élite",s:"Élite",f:"Betclic Élite",sp:"basket",c:"#d97706"},
 euro:{n:"Euroligue",s:"Euro",f:"Euroligue",sp:"basket",c:"#c2410c"},
 moto:{n:"MotoGP",s:"Moto",f:"MotoGP",sp:"moto",c:"#65a30d"},
-f1:{n:"Formule 1",s:"F1",f:"F1",sp:"f1",c:"#e11d48"}};
-["f1","moto","nba"].forEach(k=>L[k].r=1);
+f1:{n:"Formule 1",s:"F1",f:"F1",sp:"f1",c:"#e11d48"},
+rt14:{n:"Top 14",s:"T14",f:"Top 14",sp:"rugby",c:"#0e7490"},
+rec:{n:"Coupe d'Europe",s:"CE",f:"Coupe d'Europe",sp:"rugby",c:"#4338ca"},
+r6n:{n:"Six Nations",s:"6N",f:"Six Nations",sp:"rugby",c:"#a21caf"},
+rint:{n:"Matchs internationaux",s:"XV",f:"Matchs internationaux",sp:"rugby",c:"#15803d"},
+rwc:{n:"Coupe du monde de rugby",s:"CM",f:"Coupe du monde",sp:"rugby",c:"#ca8a04"},
+bwc:{n:"Coupe du monde de biathlon",s:"CM",f:"Coupe du monde",sp:"biathlon",c:"#0284c7"},
+bch:{n:"Championnats du monde de biathlon",s:"Mondial",f:"Championnats du monde",sp:"biathlon",c:"#7c3aed"},
+beu:{n:"Championnats d'Europe de biathlon",s:"Euro",f:"Championnats d'Europe",sp:"biathlon",c:"#0d9488"}};
+["f1","moto","nba","rt14","rec","r6n","rint","rwc","bwc","bch","beu"].forEach(k=>L[k].r=1);
 const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,"0");
 let EV=[];
 let sp="all",lg="all",tm="all";
 const now=new Date(),Y=now.getFullYear();
 let cur={y:Y,m:now.getMonth()};
 const key=(y,m,d)=>y+"-"+pad(m+1)+"-"+pad(d);
-const teams=e=>/^(foot|basket)$/.test(L[e.l].sp)&&e.ti.includes(" - ")?e.ti.split(" - "):[];
+const teams=e=>/^(foot|basket|rugby)$/.test(L[e.l].sp)&&e.ti.includes(" - ")?e.ti.split(" - "):[];
 const vis=()=>EV.filter(e=>(sp==="all"||L[e.l].sp===sp)&&(lg==="all"||e.l===lg)&&(tm==="all"||teams(e).includes(tm)));
 const dl=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})};
 const hh=t=>t.replace(":","h");
@@ -118,7 +126,7 @@ const ts=lg==="all"?[]:[...new Set(EV.filter(e=>e.l===lg).flatMap(teams))].sort(
 $("#teams").innerHTML=ts.length?[["all","Toutes les équipes"],...ts.map(x=>[x,x])].map(([k,n])=>`<button class="chip" aria-pressed="${tm===k}" data-tm="${k}">${n}</button>`).join(""):"";
 }
 const chip=(k,es)=>{const e=es[0],l=L[e.l];return `<button class="ev" style="--c:${l.c}" data-g="${k}|${e.l}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
-const unit=l=>/^(foot|basket)$/.test(L[l].sp)?"matchs":"sessions";
+const unit=l=>/^(foot|basket|rugby)$/.test(L[l].sp)?"matchs":"sessions";
 function grid(){
 const{y,m}=cur,map={};
 $("#mt").textContent=new Date(y,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
@@ -168,7 +176,7 @@ else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
 addEventListener("resize",grid);
-fetch("data.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{EV=j.events;filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
+Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{EV=j.events.concat(m.events).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
 </script>
 </body>
 </html>
