@@ -102,14 +102,42 @@ async function nba() {
   return nbaSite();
 }
 
+const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
+
+// Football via le service public d'ESPN (sans clé). slug : fra.1 = Ligue 1, fra.2 = Ligue 2, uefa.nations = Ligue des Nations
+async function espn(slug, l, label) {
+  const seen = new Map(), start = new Date();
+  start.setDate(start.getDate() - 2);
+  const end = new Date(Date.UTC(start.getUTCFullYear() + (start.getUTCMonth() >= 6 ? 1 : 0), 5, 30));
+  for (let a = new Date(start); a < end; a.setDate(a.getDate() + 14)) {
+    const b = new Date(Math.min(+a + 13 * 864e5, +end));
+    const j = await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${ymd(a)}-${ymd(b)}&limit=300`);
+    for (const e of j.events || []) {
+      const c = e.competitions && e.competitions[0];
+      const h = c && c.competitors.find(x => x.homeAway === "home"), v = c && c.competitors.find(x => x.homeAway === "away");
+      if (!h || !v || !e.date) continue;
+      const nm = x => x.team.shortDisplayName || x.team.displayName;
+      const { d, t } = paris(e.date);
+      seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: (c.venue && c.venue.fullName) || label });
+    }
+  }
+  return [...seen.values()];
+}
+
 async function main() {
   const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
   let events = data.events, fails = 0;
-  for (const [l, fn] of [["f1", f1], ["nba", nba]]) {
+  const real = new Set(data.real || []);
+  const sources = [["f1", f1], ["nba", nba],
+    ["l1", () => espn("fra.1", "l1", "Ligue 1")],
+    ["l2", () => espn("fra.2", "l2", "Ligue 2")],
+    ["ldn", () => espn("uefa.nations", "ldn", "Ligue des Nations")]];
+  for (const [l, fn] of sources) {
     try {
       const fresh = await fn();
       if (!fresh.length) throw new Error("aucun événement reçu");
       events = events.filter(e => e.l !== l).concat(fresh);
+      real.add(l);
       console.log(l, "OK :", fresh.length, "événements");
     } catch (e) {
       fails++;
@@ -117,8 +145,8 @@ async function main() {
     }
   }
   events.sort((a, b) => (a.d + a.t).localeCompare(b.d + b.t));
-  fs.writeFileSync(FILE, '{"updatedAt":"' + new Date().toISOString() + '","events":[\n' +
+  fs.writeFileSync(FILE, '{"updatedAt":"' + new Date().toISOString() + '","real":' + JSON.stringify([...real]) + ',"events":[\n' +
     events.map(e => JSON.stringify(e)).join(",\n") + "\n]}");
-  if (fails === 2) process.exitCode = 1;
+  if (fails === sources.length) process.exitCode = 1;
 }
 main();

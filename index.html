@@ -69,7 +69,7 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 <div id="tl"></div>
 <h2 class="sec">Prochainement</h2>
 <div id="nx"></div>
-<p class="note">F1 et NBA : calendriers réels, mis à jour automatiquement. MotoGP : calendrier réel d'octobre à décembre 2026. Rugby et biathlon : dates clés réelles, sans horaires pour l'instant. Football, Betclic Élite et Euroligue : données d'exemple. Heure de Paris.</p>
+<p class="note" id="src"></p>
 <p class="note" id="upd"></p>
 </section>
 <section id="cal" hidden>
@@ -176,7 +176,7 @@ else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
 addEventListener("resize",grid);
-Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{EV=j.events.concat(m.events).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
+Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{EV=j.events.concat(m.events).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.values(L).filter(l=>!l.r).map(l=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
 </script>
 </body>
 </html>
