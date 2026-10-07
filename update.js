@@ -29,13 +29,14 @@ const NBA_HEADERS = {
   "Origin": "https://www.nba.com"
 };
 const get = async (url, headers = { "User-Agent": "my-daily-sports" }) => {
-  const r = await fetch(url, { headers });
-  if (!r.ok) {
+  for (let essai = 1; ; essai++) {
+    const r = await fetch(url, { headers });
+    if (r.ok) return r.json();
+    if ((r.status === 429 || r.status >= 500) && essai < 3) { await new Promise(x => setTimeout(x, 1500 * essai)); continue; }
     let body = "";
     try { body = (await r.text()).slice(0, 150); } catch (e) {}
     throw new Error(url + " -> HTTP " + r.status + " " + body);
   }
-  return r.json();
 };
 
 async function f1() {
@@ -108,26 +109,31 @@ async function nba() {
 
 const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
 
-// Football et rugby via le service public d'ESPN (sans clé).
-// sport "soccer" : fra.1 = Ligue 1, fra.2 = Ligue 2, uefa.nations = Ligue des Nations
-// sport "rugby" : 270559 = Top 14, 271937 = Coupe d'Europe, 180659 = Six Nations
-let rangeBroken = false;
+// Football, rugby, NFL, NHL et UFC via le service public d'ESPN (sans clé).
+// Identifiants : soccer/fra.1 = Ligue 1, rugby/270559 = Top 14, football/nfl, hockey/nhl, mma/ufc, etc.
+const rangeBroken = {};
+async function espnDaily(base, a, b) {
+  const days = [];
+  for (const d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) days.push(ymd(d));
+  const out = [];
+  for (let i = 0; i < days.length; i += 5) {
+    const res = await Promise.all(days.slice(i, i + 5).map(x => get(base + x)));
+    for (const j of res) out.push(...(j.events || []));
+    await sleep(150);
+  }
+  return out;
+}
 async function espnWindow(sport, slug, a, b) {
   const base = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${slug}/scoreboard?dates=`;
-  if (!rangeBroken) {
+  if (!rangeBroken[sport]) {
     try { return (await get(base + ymd(a) + "-" + ymd(b))).events || []; }
     catch (e) {
       if (!/HTTP 400/.test(e.message)) throw e;
-      rangeBroken = true;
-      console.log("Plage de dates refusée par ESPN, passage au jour par jour");
+      rangeBroken[sport] = true;
+      console.log(sport + " : plage de dates refusée par ESPN, passage au jour par jour");
     }
   }
-  const out = [];
-  for (const d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
-    out.push(...((await get(base + ymd(d))).events || []));
-    await sleep(120);
-  }
-  return out;
+  return espnDaily(base, a, b);
 }
 
 async function espn(sport, slug, l, label, win) {
@@ -136,15 +142,18 @@ async function espn(sport, slug, l, label, win) {
   const end = win ? win[1] : new Date(Date.UTC(now.getUTCFullYear() + (now.getUTCMonth() >= 6 ? 1 : 0), 5, 30));
   const days = +process.env.ESPN_DAYS || 120;
   for (let a = new Date(start); a < end; a.setDate(a.getDate() + 14)) {
-    if (!win && rangeBroken && +a > +start + days * 864e5) break;
+    if (!win && rangeBroken[sport] && +a > +start + days * 864e5) break;
     const b = new Date(Math.min(+a + 13 * 864e5, +end));
     for (const e of await espnWindow(sport, slug, new Date(a), b)) {
+      if (!e.date) continue;
       const c = e.competitions && e.competitions[0], cs = (c && c.competitors) || [];
-      const h = cs.find(x => x.homeAway === "home") || cs[0], v = cs.find(x => x.homeAway === "away") || cs[1];
-      if (!h || !v || !h.team || !v.team || !e.date) continue;
-      const nm = x => x.team.shortDisplayName || x.team.displayName;
       const { d, t } = paris(e.date);
-      seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: (c.venue && c.venue.fullName) || label });
+      const venue = (c && c.venue && c.venue.fullName) || label;
+      if (sport === "mma") { seen.set(e.id || e.date, { d, t, l, ti: e.name || e.shortName || label, de: venue }); continue; }
+      const h = cs.find(x => x.homeAway === "home") || cs[0], v = cs.find(x => x.homeAway === "away") || cs[1];
+      if (!h || !v || !h.team || !v.team) continue;
+      const nm = x => x.team.shortDisplayName || x.team.displayName;
+      seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: venue });
     }
   }
   return [...seen.values()];
@@ -161,7 +170,16 @@ async function main() {
     ["ldn", () => espn("soccer", "uefa.nations", "ldn", "Ligue des Nations")],
     ["rt14", () => espn("rugby", "270559", "rt14", "Top 14")],
     ["rec", () => espn("rugby", "271937", "rec", "Coupe d'Europe")],
-    ["r6n", () => espn("rugby", "180659", "r6n", "Six Nations", [new Date(Date.UTC(sy, 0, 25)), new Date(Date.UTC(sy, 2, 31))])]];
+    ["r6n", () => espn("rugby", "180659", "r6n", "Six Nations", [new Date(Date.UTC(sy, 0, 25)), new Date(Date.UTC(sy, 2, 31))])],
+    ["ucl", () => espn("soccer", "uefa.champions", "ucl", "Ligue des champions")],
+    ["uel", () => espn("soccer", "uefa.europa", "uel", "Europa League")],
+    ["pl", () => espn("soccer", "eng.1", "pl", "Premier League")],
+    ["liga", () => espn("soccer", "esp.1", "liga", "La Liga")],
+    ["sa", () => espn("soccer", "ita.1", "sa", "Serie A")],
+    ["bl", () => espn("soccer", "ger.1", "bl", "Bundesliga")],
+    ["nfl", () => espn("football", "nfl", "nfl", "NFL")],
+    ["nhl", () => espn("hockey", "nhl", "nhl", "NHL")],
+    ["ufc", () => espn("mma", "ufc", "ufc", "UFC")]];
   for (const [l, fn] of sources) {
     try {
       const fresh = await fn();
