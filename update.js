@@ -30,7 +30,11 @@ const NBA_HEADERS = {
 };
 const get = async (url, headers = { "User-Agent": "my-daily-sports" }) => {
   const r = await fetch(url, { headers });
-  if (!r.ok) throw new Error(url + " -> HTTP " + r.status);
+  if (!r.ok) {
+    let body = "";
+    try { body = (await r.text()).slice(0, 150); } catch (e) {}
+    throw new Error(url + " -> HTTP " + r.status + " " + body);
+  }
   return r.json();
 };
 
@@ -105,14 +109,34 @@ async function nba() {
 const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
 
 // Football via le service public d'ESPN (sans clé). slug : fra.1 = Ligue 1, fra.2 = Ligue 2, uefa.nations = Ligue des Nations
+let rangeBroken = false;
+async function espnWindow(slug, a, b) {
+  const base = `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=`;
+  if (!rangeBroken) {
+    try { return (await get(base + ymd(a) + "-" + ymd(b))).events || []; }
+    catch (e) {
+      if (!/HTTP 400/.test(e.message)) throw e;
+      rangeBroken = true;
+      console.log("Plage de dates refusée par ESPN, passage au jour par jour");
+    }
+  }
+  const out = [];
+  for (const d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
+    out.push(...((await get(base + ymd(d))).events || []));
+    await sleep(120);
+  }
+  return out;
+}
+
 async function espn(slug, l, label) {
   const seen = new Map(), start = new Date();
   start.setDate(start.getDate() - 2);
   const end = new Date(Date.UTC(start.getUTCFullYear() + (start.getUTCMonth() >= 6 ? 1 : 0), 5, 30));
+  const days = +process.env.ESPN_DAYS || 120;
   for (let a = new Date(start); a < end; a.setDate(a.getDate() + 14)) {
+    if (rangeBroken && +a > +start + days * 864e5) break;
     const b = new Date(Math.min(+a + 13 * 864e5, +end));
-    const j = await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${ymd(a)}-${ymd(b)}&limit=300`);
-    for (const e of j.events || []) {
+    for (const e of await espnWindow(slug, new Date(a), b)) {
       const c = e.competitions && e.competitions[0];
       const h = c && c.competitors.find(x => x.homeAway === "home"), v = c && c.competitors.find(x => x.homeAway === "away");
       if (!h || !v || !e.date) continue;
