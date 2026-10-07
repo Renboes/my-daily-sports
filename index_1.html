@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My Daily Sports">
+<title>My Daily Sports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#eceff4;--card:#fff;--ink:#121826;--mut:#667085;--line:#d9dee7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1118;--card:#171c26;--ink:#eef1f6;--mut:#9aa4b5;--line:#283040}}
+:root[data-theme="dark"]{--bg:#0d1118;--card:#171c26;--ink:#eef1f6;--mut:#9aa4b5;--line:#283040}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.35 "Barlow Condensed","Arial Narrow",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+.wrap{max-width:1040px;margin:0 auto;padding:16px 10px 32px}
+h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
+.note{margin:0 0 14px;color:var(--mut);font-size:14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.sc{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-weight:600;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:focus-visible,.ev:focus-visible,.dn:focus-visible,.row:focus-visible,.nb:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.nav{display:flex;align-items:center;gap:8px;margin:14px 0 8px}
+.nav h2{flex:1;margin:0;font-size:24px;font-weight:700;text-transform:capitalize}
+.nb{border:1px solid var(--line);background:var(--card);border-radius:8px;min-width:40px;height:36px;padding:0 10px;cursor:pointer;font-weight:700}
+.nb:disabled{opacity:.35;cursor:default}
+.grid,.dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{margin-bottom:4px;color:var(--mut);font-weight:600;font-size:14px;text-align:center}
+.cell{min-height:92px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.cell.out{background:transparent;border-color:transparent}
+.cell.today{border:2px solid var(--ink)}
+.dn{background:none;border:0;padding:0 2px;text-align:left;color:var(--mut);font-weight:700;cursor:pointer;font-size:14px}
+.ev{display:flex;align-items:center;gap:3px;width:100%;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 18%,var(--card));border-radius:4px;padding:2px 3px;font-size:13px;font-weight:700;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden}
+.ev span{overflow:hidden;text-overflow:ellipsis}
+.f{display:none}
+.more{background:none;border:0;padding:0 2px;color:var(--mut);font-weight:700;text-align:left;cursor:pointer;font-size:13px}
+.ov{position:fixed;inset:0;background:rgba(8,12,20,.55);display:flex;align-items:flex-end;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px));z-index:10}
+.ov[hidden]{display:none}
+.dlg{background:var(--card);border-radius:14px;width:100%;max-width:420px;max-height:80vh;overflow:auto;padding:20px}
+.dlg h3{margin:8px 0 4px;font-size:26px;line-height:1.15;font-weight:700}
+.dlg p{margin:6px 0}
+.meta{color:var(--mut)}
+.badge{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:26px;background:color-mix(in srgb,var(--c) 22%,var(--card));border:2px solid var(--c)}
+.tag{display:inline-block;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 18%,var(--card));padding:1px 8px;border-radius:4px;font-weight:700}
+.row{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--card));border-radius:6px;padding:8px 10px;margin:6px 0;cursor:pointer;font-weight:600}
+.x{margin-top:12px}
+.date{margin:0 0 14px;color:var(--mut);font-size:21px;font-weight:600;text-transform:capitalize}
+.go{display:block;width:100%;border:0;border-radius:12px;background:var(--ink);color:var(--bg);font:700 22px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:14px;cursor:pointer;margin:0 0 8px}
+.go:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.sec{font-size:24px;margin:22px 0 6px;font-weight:700}
+.back{margin-bottom:10px}
+.empty{color:var(--mut);margin:6px 0}
+#home .note{margin-top:22px}
+@media (min-width:720px){.s{display:none}.f{display:inline}.cell{min-height:112px}.wrap{padding:24px 16px 40px}h1{font-size:38px}.ov{align-items:center}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section id="home">
+<h1>My Daily Sports</h1>
+<p class="date" id="today"></p>
+<button class="go" data-go="cal">📅 Ouvrir le calendrier</button>
+<h2 class="sec">Au programme aujourd'hui</h2>
+<div id="tl"></div>
+<h2 class="sec">Prochainement</h2>
+<div id="nx"></div>
+<p class="note">F1 et NBA : calendriers réels, mis à jour automatiquement. MotoGP : calendrier réel d'octobre à décembre 2026. Football, Betclic Élite et Euroligue : données d'exemple. Heure de Paris.</p>
+<p class="note" id="upd"></p>
+</section>
+<section id="cal" hidden>
+<button class="nb back" data-go="home">‹ Accueil</button>
+<div id="sports" class="chips"></div>
+<div id="leagues" class="chips"></div>
+<div id="teams" class="chips sc"></div>
+<div class="nav">
+<button class="nb" id="prev" aria-label="Mois précédent">‹</button>
+<h2 id="mt"></h2>
+<button class="nb" id="today">Aujourd'hui</button>
+<button class="nb" id="next" aria-label="Mois suivant">›</button>
+</div>
+<div class="dow"><div>lun</div><div>mar</div><div>mer</div><div>jeu</div><div>ven</div><div>sam</div><div>dim</div></div>
+<div id="grid" class="grid"></div>
+</section>
+</div>
+<div id="ov" class="ov" hidden><div id="box" class="dlg" role="dialog" aria-modal="true"></div></div>
+<script>
+const SP={foot:{n:"Football",e:"⚽"},basket:{n:"Basketball",e:"🏀"},moto:{n:"MotoGP",e:"🏍️"},f1:{n:"Formule 1",e:"🏎️"}};
+const L={
+l1:{n:"Ligue 1",s:"L1",f:"Ligue 1",sp:"foot",c:"#2563eb"},
+l2:{n:"Ligue 2",s:"L2",f:"Ligue 2",sp:"foot",c:"#0d9488"},
+ldn:{n:"Ligue des Nations",s:"LDN",f:"Ligue des Nations",sp:"foot",c:"#7c3aed"},
+nba:{n:"NBA",s:"NBA",f:"NBA",sp:"basket",c:"#ea580c"},
+elite:{n:"Betclic Élite",s:"Élite",f:"Betclic Élite",sp:"basket",c:"#d97706"},
+euro:{n:"Euroligue",s:"Euro",f:"Euroligue",sp:"basket",c:"#c2410c"},
+moto:{n:"MotoGP",s:"Moto",f:"MotoGP",sp:"moto",c:"#65a30d"},
+f1:{n:"Formule 1",s:"F1",f:"F1",sp:"f1",c:"#e11d48"}};
+["f1","moto","nba"].forEach(k=>L[k].r=1);
+const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,"0");
+let EV=[];
+let sp="all",lg="all",tm="all";
+const now=new Date(),Y=now.getFullYear();
+let cur={y:Y,m:now.getMonth()};
+const key=(y,m,d)=>y+"-"+pad(m+1)+"-"+pad(d);
+const teams=e=>/^(foot|basket)$/.test(L[e.l].sp)&&e.ti.includes(" - ")?e.ti.split(" - "):[];
+const vis=()=>EV.filter(e=>(sp==="all"||L[e.l].sp===sp)&&(lg==="all"||e.l===lg)&&(tm==="all"||teams(e).includes(tm)));
+const dl=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})};
+const hh=t=>t.replace(":","h");
+function filters(){
+$("#sports").innerHTML=[["all","Tout","📅"],...Object.entries(SP).map(([k,v])=>[k,v.n,v.e])].map(([k,n,e])=>`<button class="chip" aria-pressed="${sp===k}" data-sp="${k}">${e} ${n}</button>`).join("");
+const ls=Object.entries(L).filter(([k,v])=>v.sp===sp);
+$("#leagues").innerHTML=ls.length>1?[["all","Toutes les ligues"],...ls.map(([k,v])=>[k,v.f])].map(([k,n])=>`<button class="chip" aria-pressed="${lg===k}" data-lg="${k}">${n}</button>`).join(""):"";
+const ts=lg==="all"?[]:[...new Set(EV.filter(e=>e.l===lg).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
+$("#teams").innerHTML=ts.length?[["all","Toutes les équipes"],...ts.map(x=>[x,x])].map(([k,n])=>`<button class="chip" aria-pressed="${tm===k}" data-tm="${k}">${n}</button>`).join(""):"";
+}
+const chip=(k,es)=>{const e=es[0],l=L[e.l];return `<button class="ev" style="--c:${l.c}" data-g="${k}|${e.l}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
+const unit=l=>/^(foot|basket)$/.test(L[l].sp)?"matchs":"sessions";
+function grid(){
+const{y,m}=cur,map={};
+$("#mt").textContent=new Date(y,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+vis().forEach(e=>(map[e.d]=map[e.d]||[]).push(e));
+const off=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate(),max=innerWidth<720?2:3,tk=key(now.getFullYear(),now.getMonth(),now.getDate());
+let h="";
+for(let i=0;i<Math.ceil((off+n)/7)*7;i++){
+const d=i-off+1;
+if(d<1||d>n){h+='<div class="cell out"></div>';continue}
+const k=key(y,m,d),es=map[k]||[],gs=Object.values(es.reduce((a,e)=>((a[e.l]=a[e.l]||[]).push(e),a),{}));
+h+=`<div class="cell${k===tk?" today":""}"><button class="dn" data-day="${k}">${d}</button>`+gs.slice(0,max).map(g=>chip(k,g)).join("")+(gs.length>max?`<button class="more" data-day="${k}">+${gs.length-max}</button>`:"")+"</div>";
+}
+$("#grid").innerHTML=h;
+$("#prev").disabled=y===Y&&m===0;
+$("#next").disabled=y===Y+1&&m===11;
+}
+const tk=()=>key(now.getFullYear(),now.getMonth(),now.getDate());
+const sd=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})};
+const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
+function home(){
+$("#today").textContent=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const k=tk(),td=EV.filter(e=>e.d===k),nx=EV.filter(e=>e.d>k).slice(0,6);
+$("#tl").innerHTML=td.length?td.map(e=>rw(e)).join(""):'<p class="empty">Rien au programme aujourd\'hui.</p>';
+$("#nx").innerHTML=nx.map(e=>rw(e,1)).join("");
+}
+function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";scrollTo(0,0);if(v==="cal")grid()}
+const ov=$("#ov"),box=$("#box");
+function show(h){box.innerHTML=h+'<button class="chip x" data-x>Fermer</button>';ov.hidden=false}
+function detail(i){const e=EV[i],l=L[e.l];show(`<div class="badge" style="--c:${l.c}">${SP[l.sp].e}</div><h3>${e.ti}</h3><p class="meta">${dl(e.d)}${e.t?", "+hh(e.t):""}</p><p><span class="tag" style="--c:${l.c}">${l.n}</span></p><p>${e.de}</p>${l.r?"":"<p class=\"meta\">Donnée d'exemple, à remplacer par la vraie.</p>"}`)}
+function grp(s){const[k,l]=s.split("|"),es=vis().filter(e=>e.d===k&&e.l===l);if(es.length===1)return detail(EV.indexOf(es[0]));show(`<h3>${L[l].f}</h3><p class="meta">${dl(k)}, ${es.length} ${unit(l)}</p>`+es.map(e=>`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(e)}">${e.t?hh(e.t)+", ":""}${e.ti}</button>`).join(""))}
+function day(k){const es=vis().filter(e=>e.d===k),G={};es.forEach(e=>(G[e.l]=G[e.l]||[]).push(e));show(`<h3>${dl(k)}</h3>`+(es.length?Object.entries(G).map(([l,g])=>g.length===1?`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(g[0])}">${g[0].t?hh(g[0].t)+", ":""}${L[l].f} : ${g[0].ti}</button>`:`<button class="row" style="--c:${L[l].c}" data-g="${k}|${l}">${SP[L[l].sp].e} ${L[l].f}, ${g.length} ${unit(l)}</button>`).join(""):'<p class="meta">Aucun événement ce jour-là.</p>'))}
+document.addEventListener("click",ev=>{
+const t=ev.target;
+if(t===ov||t.closest("[data-x]")){ov.hidden=true;return}
+const b=t.closest("button");if(!b)return;
+const D=b.dataset;
+if(D.sp){sp=D.sp;lg="all";tm="all";filters();grid()}
+else if(D.lg){lg=D.lg;tm="all";filters();grid()}
+else if(D.tm){tm=D.tm;filters();grid()}
+else if(D.ev!==undefined)detail(+D.ev);
+else if(D.day)day(D.day);
+else if(D.go)go(D.go);
+else if(D.g)grp(D.g);
+else if(b.id==="prev"){cur.m--;if(cur.m<0){cur.m=11;cur.y--}grid()}
+else if(b.id==="next"){cur.m++;if(cur.m>11){cur.m=0;cur.y++}grid()}
+else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
+addEventListener("resize",grid);
+fetch("data.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{EV=j.events;filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
+</script>
+</body>
+</html>
