@@ -111,6 +111,14 @@ const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
 
 // Football, rugby, NFL, NHL et UFC via le service public d'ESPN (sans clé).
 // Identifiants : soccer/fra.1 = Ligue 1, rugby/270559 = Top 14, football/nfl, hockey/nhl, mma/ufc, etc.
+const TEAMS = {};
+const hex = v => (v && /^[0-9a-f]{6}$/i.test(v) ? "#" + v : null);
+const rec = (x, k) => {
+  const t = x.team;
+  if (TEAMS[k]) return;
+  const logo = t.logo || (t.logos && t.logos[0] && t.logos[0].href) || null;
+  if (logo || t.color) TEAMS[k] = { logo, color: hex(t.color), alt: hex(t.alternateColor) };
+};
 const rangeBroken = {};
 async function espnDaily(base, a, b) {
   const days = [];
@@ -153,6 +161,7 @@ async function espn(sport, slug, l, label, win) {
       const h = cs.find(x => x.homeAway === "home") || cs[0], v = cs.find(x => x.homeAway === "away") || cs[1];
       if (!h || !v || !h.team || !v.team) continue;
       const nm = x => x.team.shortDisplayName || x.team.displayName;
+      rec(h, nm(h)); rec(v, nm(v));
       seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: venue });
     }
   }
@@ -319,7 +328,8 @@ async function main() {
     }
   }
   events.sort((a, b) => (a.d + a.t).localeCompare(b.d + b.t));
-  fs.writeFileSync(FILE, '{"updatedAt":"' + new Date().toISOString() + '","real":' + JSON.stringify([...real]) + ',"events":[\n' +
+  const teams = Object.assign({}, data.teams || {}, TEAMS);
+  fs.writeFileSync(FILE, '{"updatedAt":"' + new Date().toISOString() + '","real":' + JSON.stringify([...real]) + ',"teams":' + JSON.stringify(teams) + ',"events":[\n' +
     events.map(e => JSON.stringify(e)).join(",\n") + "\n]}");
   if (fails === sources.length) process.exitCode = 1;
 }
