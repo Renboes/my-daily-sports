@@ -69,6 +69,10 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 #tq{width:100%;padding:9px 12px;margin:6px 0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
 .cfg{display:block;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;font:600 17px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 6px}
+[hidden]{display:none!important}
+.club{display:block;width:100%;border:2px solid #ff5a00;background:transparent;color:#ff5a00;border-radius:12px;padding:10px;font:700 21px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 8px}
+.club:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.cname{font-size:34px;line-height:1.1;margin:6px 0 2px;font-weight:700}
 .topbar{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .wordmark{display:block;width:min(280px,72vw);height:auto;margin:10px auto 4px}
@@ -98,6 +102,7 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 <p class="hello" id="hello"></p>
 <div id="hero"></div>
 <button class="go" data-go="cal">📅 Ouvrir le calendrier</button>
+<button class="club" data-go="club">🛡️ My Club</button>
 <button class="cfg" id="cfg">⚙️ Mes compétitions et mes favoris</button>
 <h2 class="sec">Au programme aujourd'hui</h2>
 <div id="tl"></div>
@@ -106,6 +111,14 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 <div id="nx"></div>
 <p class="note" id="src"></p>
 <p class="note" id="upd"></p>
+</section>
+<section id="club" hidden>
+<div class="topbar"><button class="nb" data-go="home">‹ Accueil</button><button class="nb" id="cchg">Changer de club</button></div>
+<h2 class="cname" id="cname"></h2><p class="meta" id="csub"></p>
+<div id="chero"></div>
+<h2 class="sec">Prochains rendez-vous</h2>
+<div id="clist"></div>
+<button class="cfg" id="cmore" hidden>Voir tous les matchs</button>
 </section>
 <section id="cal" hidden>
 <div class="topbar"><button class="nb" data-go="home">‹ Accueil</button><button class="nb" id="cfg2">⚙️ Personnaliser</button></div>
@@ -196,7 +209,7 @@ $("#next").disabled=y===Y+1&&m===11;
 const tk=()=>key(now.getFullYear(),now.getMonth(),now.getDate());
 const sd=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})};
 const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${isFav(e)?"⭐ ":""}${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
-const hero=(e,k,f)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">${f?"Prochain parmi mes favoris":"Prochain rendez-vous"}</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
+const hero=(e,k,f,lab)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">${lab||(f?"Prochain parmi mes favoris":"Prochain rendez-vous")}</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
 function home(){
 const h=now.getHours(),g=h>=18||h<5?"Bonsoir":h<12?"Bonjour":"Bon après-midi",k=tk(),hm=pad(h)+":"+pad(now.getMinutes());
 $("#today").textContent=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
@@ -208,6 +221,26 @@ $("#tl").innerHTML=td.length?td.map(e=>rw(e)).join(""):"<p class=\"empty\">Rien 
 $("#fv").innerHTML=fv.length?'<h2 class="sec">Mes favoris</h2>'+up(fv).slice(0,6).map(e=>rw(e,1)).join(""):"";
 $("#nx").innerHTML=nx.slice(0,6).map(e=>rw(e,1)).join("");
 }
+const ckey="mds_club";
+let club=(()=>{try{return localStorage.getItem(ckey)}catch(e){return null}})(),cAll=false;
+const teamsAll=()=>[...new Set(EV.flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
+const clubName=()=>club||teamsAll().find(n=>/nantes/i.test(n))||"";
+function clubPage(){
+const c=clubName(),k=tk(),hm=pad(now.getHours())+":"+pad(now.getMinutes());
+$("#cname").textContent=c||"My Club";
+if(!c){$("#csub").textContent="Choisis ton club avec « Changer de club ».";$("#chero").innerHTML="";$("#clist").innerHTML="";$("#cmore").hidden=true;return}
+const mine=EV.filter(e=>teams(e).includes(c)),up=mine.filter(e=>e.d>k||(e.d===k&&(!e.t||e.t>=hm)));
+$("#csub").textContent=mine.length?"Compétitions : "+[...new Set(mine.map(e=>L[e.l].f))].join(", "):"Aucun match trouvé pour l'instant.";
+const f=up[0],opp=e=>teams(e).find(t=>t!==c),dom=e=>e.ti.startsWith(c+" - ");
+$("#chero").innerHTML=f?hero(f,k,false,"Prochain match · "+(dom(f)?"à domicile":"à l'extérieur")):"";
+const rest=up.slice(f?1:0),shown=cAll?rest:rest.slice(0,12);
+$("#clist").innerHTML=shown.length?shown.map(e=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${sd(e.d)}${e.t?" "+hh(e.t):""}</b> ${SP[l.sp].e} ${dom(e)?"reçoit":"se déplace à"} ${opp(e)} <span class="meta">(${l.f})</span></button>`}).join(""):(f?"":'<p class="empty">Aucun rendez-vous à venir.</p>');
+$("#cmore").hidden=cAll||rest.length<=12;
+}
+function clubChoose(){
+show('<h3>Changer de club</h3><p class="meta">Tape le nom de l\'équipe, puis choisis-la dans la liste.</p><input id="cq" placeholder="Nantes, PSG, Lakers, Toulouse…" autocomplete="off" style="width:100%;padding:9px 12px;margin:6px 0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><div id="cres" class="chips"></div>');
+}
+function cres(){const q=$("#cq").value.trim().toLowerCase();$("#cres").innerHTML=q.length<2?"":(teamsAll().filter(n=>n.toLowerCase().includes(q)).slice(0,12).map(n=>`<button class="chip sm" data-club="${n}">${n}</button>`).join("")||'<span class="meta">Aucune équipe trouvée.</span>')}
 function refresh(){
 if(sp!=="all"&&!Object.entries(L).some(([k,l])=>l.sp===sp&&!hid.has(k)))sp="all";
 if(lg!=="all"&&hid.has(lg))lg="all";
@@ -226,7 +259,7 @@ for(const [k,l] of Object.entries(L))if(l.sp===s)x+=`<div class="lgr"><label><in
 x+='<h3>Mes équipes favorites</h3><input id="tq" placeholder="Chercher une équipe (PSG, Lakers…)" autocomplete="off"><div id="tres" class="chips"></div><div id="tfav" class="chips"></div>';
 show(x);tfav();
 }
-function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";scrollTo(0,0);if(v==="cal")grid()}
+function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";$("#club").hidden=v!=="club";scrollTo(0,0);if(v==="cal")grid();if(v==="club"){cAll=false;clubPage()}}
 const ov=$("#ov"),box=$("#box");
 function show(h){box.innerHTML=h+'<button class="chip x" data-x>Fermer</button>';ov.hidden=false}
 function detail(i){const e=EV[i],l=L[e.l];show(`<div class="badge" style="--c:${l.c}">${SP[l.sp].e}</div><h3>${e.ti}</h3><p class="meta">${dl(e.d)}${e.t?", "+hh(e.t):""}</p><p><span class="tag" style="--c:${l.c}">${l.n}</span></p><p>${e.de}</p>${l.r?"":"<p class=\"meta\">Donnée d'exemple, à remplacer par la vraie.</p>"}`)}
@@ -250,11 +283,14 @@ else if(D.sa||D.sn){const s=D.sa||D.sn;for(const [k,l] of Object.entries(L))if(l
 else if(D.ft){ft.add(D.ft);sv();tfav();$("#tq").value="";$("#tres").innerHTML="";refresh()}
 else if(D.fx){ft.delete(D.fx);sv();tfav();refresh()}
 else if(b.id==="cfg"||b.id==="cfg2")cfgOpen();
+else if(b.id==="cchg")clubChoose();
+else if(b.id==="cmore"){cAll=true;clubPage()}
+else if(D.club){club=D.club;try{localStorage.setItem(ckey,club)}catch(e){}ov.hidden=true;cAll=false;clubPage()}
 else if(b.id==="prev"){cur.m--;if(cur.m<0){cur.m=11;cur.y--}grid()}
 else if(b.id==="next"){cur.m++;if(cur.m>11){cur.m=0;cur.y++}grid()}
 else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
 });
-document.addEventListener("input",e=>{if(e.target.id==="tq")tres()});
+document.addEventListener("input",e=>{if(e.target.id==="tq")tres();if(e.target.id==="cq")cres()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
 addEventListener("resize",grid);
 Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{const mx={};j.events.forEach(e=>{if((j.real||[]).includes(e.l)&&(!mx[e.l]||e.d>mx[e.l]))mx[e.l]=e.d});EV=j.events.concat(m.events.filter(e=>!(mx[e.l]&&e.d<=mx[e.l]))).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.entries(L).filter(([k,l])=>!l.r&&EV.some(e=>e.l===k)).map(([k,l])=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
