@@ -218,7 +218,7 @@ const frRace = s => {
 async function biathlon() {
   const base = "https://biathlonresults.com/modules/sportapi/api/", now = new Date();
   const y = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
-  const season = String(y % 100).padStart(2, "0") + String((y + 1) % 100).padStart(2, "0"), today = now.toISOString().slice(0, 10), out = [];
+  const season = String(y % 100).padStart(2, "0") + String((y + 1) % 100).padStart(2, "0"), today = now.toISOString().slice(0, 10), out = [], bad = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.Events || j.Competitions)) || []);
   for (const level of [0, 1, 2]) {
     let evs = [];
@@ -233,17 +233,24 @@ async function biathlon() {
       if (ev.EndDate && String(ev.EndDate).slice(0, 10) < today) continue;
       const place = ev.ShortDescription || ev.Organizer || ev.Description;
       for (const c of arr(await get(`${base}Competitions?EventId=${ev.EventId}`))) {
+        const iso = v => { const x = String(v).trim().replace(" ", "T"); return /[zZ]|[+-]\d\d:?\d\d$/.test(x) ? x : x + "Z"; };
         let d, t = "";
-        const utc = c.UTCStartTime || c.StartTimeUTC;
-        if (utc) ({ d, t } = paris(/[zZ]|[+-]\d\d:?\d\d$/.test(utc) ? utc : utc + "Z"));
-        else if (c.StartTime && typeof ev.UTCOffset === "number") ({ d, t } = paris(new Date(new Date(c.StartTime + "Z") - ev.UTCOffset * 36e5).toISOString()));
-        else if (c.StartTime) d = String(c.StartTime).slice(0, 10);
-        else continue;
+        try {
+          const utc = c.UTCStartTime || c.StartTimeUTC;
+          if (utc) ({ d, t } = paris(iso(utc)));
+          else if (c.StartTime && typeof ev.UTCOffset === "number") ({ d, t } = paris(new Date(Date.parse(iso(c.StartTime)) - ev.UTCOffset * 36e5).toISOString()));
+          else throw new Error("pas d'heure UTC");
+        } catch (e) {
+          const m = String(c.StartTime || c.UTCStartTime || c.StartDate || "").match(/\d{4}-\d\d-\d\d/);
+          if (!m) { bad.push(JSON.stringify(c).slice(0, 220)); continue; }
+          d = m[0]; t = "";
+        }
         out.push({ d, t, l, ti: place + " : " + frRace(c.Description || c.ShortDescription), de: ev.Description || place });
       }
       await sleep(150);
     }
   }
+  if (!out.length) throw new Error("aucune course lisible, exemple : " + (bad[0] || "aucun"));
   return out;
 }
 
