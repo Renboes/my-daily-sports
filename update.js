@@ -11,7 +11,7 @@ const paris = iso => {
   return { d: `${p.year}-${p.month}-${p.day}`, t: `${p.hour}:${p.minute}` };
 };
 
-const FR = [["singapore","de Singapour"],["united states","des États-Unis"],["mexic","du Mexique"],
+const FR = [["indonesia","d'Indonésie"],["malaysia","de Malaisie"],["thailand","de Thaïlande"],["argentina","d'Argentine"],["americas","des Amériques"],["portugal","du Portugal"],["valencia","de Valence"],["san marino","de Saint-Marin"],["france","de France"],["spain","d'Espagne"],["catalunya","de Catalogne"],["german","d'Allemagne"],["czech","de Tchéquie"],["aragon","d'Aragon"],["singapore","de Singapour"],["united states","des États-Unis"],["mexic","du Mexique"],
   ["são paulo","du Brésil"],["sao paulo","du Brésil"],["brazil","du Brésil"],["las vegas","de Las Vegas"],
   ["qatar","du Qatar"],["abu dhabi","d'Abu Dhabi"],["australia","d'Australie"],["china","de Chine"],
   ["japan","du Japon"],["miami","de Miami"],["canad","du Canada"],["monaco","de Monaco"],
@@ -159,6 +159,121 @@ async function espn(sport, slug, l, label, win) {
   return [...seen.values()];
 }
 
+// ---------- Euroligue : interface publique du site officiel (horaires annoncés en heure d'Europe centrale, comme Paris) ----------
+const pick = (x, ...keys) => { for (const k of keys) { const v = k.split(".").reduce((o, p) => (o == null ? o : o[p]), x); if (v != null && v !== "" && typeof v !== "object") return v; } return null; };
+const MOIS = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
+async function euroleague() {
+  const now = new Date(), y = now.getUTCMonth() >= 7 ? now.getUTCFullYear() : now.getUTCFullYear() - 1, code = "E" + y;
+  let games = null;
+  const essais = [];
+  trouve: for (const v of ["v3", "v2"]) for (const q of ["?limit=500", ""]) {
+    try {
+      const j = await get(`https://api-live.euroleague.net/${v}/competitions/E/seasons/${code}/games${q}`);
+      const arr = Array.isArray(j) ? j : (j.data || j.games || j.items || j.results || []);
+      if (arr.length) { games = arr; break trouve; }
+      essais.push(v + " vide");
+    } catch (e) { essais.push(e.message.slice(0, 140)); }
+  }
+  const out = [];
+  if (games) {
+    for (const x of games) {
+      const h = pick(x, "local.club.name", "local.club.abbreviatedName", "local.name", "home.name", "homeTeam.name", "homeClub.name", "homeTeam", "home");
+      const a = pick(x, "road.club.name", "road.club.abbreviatedName", "road.name", "away.name", "awayTeam.name", "awayClub.name", "awayTeam", "away");
+      if (!h || !a) continue;
+      const utc = pick(x, "utcDate", "gameUtc", "dateUtc");
+      let d, t = "";
+      if (utc) ({ d, t } = paris(/[zZ]|[+-]\d\d:?\d\d$/.test(utc) ? utc : utc + "Z"));
+      else {
+        const raw = String(pick(x, "date", "gameDate", "startDate") || ""), m = raw.match(/^(\d{4}-\d\d-\d\d)(?:[T ](\d\d:\d\d))?/);
+        if (!m) continue;
+        d = m[1]; t = m[2] || String(pick(x, "time", "startTime") || "").slice(0, 5);
+      }
+      const rd = pick(x, "round.round", "roundNumber", "round");
+      out.push({ d, t, l: "euro", ti: h + " - " + a, de: [pick(x, "venue.name", "arena.name"), rd ? "Journée " + rd : null].filter(Boolean).join(", ") || "Euroligue" });
+    }
+    return out;
+  }
+  // dernier recours : ancien format XML
+  try {
+    const r = await fetch(`https://api-live.euroleague.net/v1/schedules?seasonCode=${code}`);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const xml = await r.text(), tag = (s, n) => (s.match(new RegExp("<" + n + ">([\\s\\S]*?)</" + n + ">")) || [])[1];
+    for (const it of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+      const s = it[1], h = tag(s, "hometeam"), a = tag(s, "awayteam"), dt = tag(s, "date");
+      if (!h || !a || !dt) continue;
+      const m = dt.match(/^(\w{3})\w*\s+(\d+),\s*(\d{4})/), iso = m ? `${m[3]}-${MOIS[m[1].toLowerCase()]}-${m[2].padStart(2, "0")}` : dt.slice(0, 10);
+      out.push({ d: iso, t: (tag(s, "startime") || tag(s, "starttime") || "").slice(0, 5), l: "euro", ti: h.trim() + " - " + a.trim(), de: tag(s, "arenaname") || "Euroligue" });
+    }
+  } catch (e) { essais.push(e.message.slice(0, 140)); }
+  if (!out.length) throw new Error("aucun format reconnu : " + essais.join(" | "));
+  return out;
+}
+
+// ---------- Biathlon : résultats de l'IBU (biathlonresults.com) ----------
+const frRace = s => {
+  let g = ""; s = String(s || "").replace(/\b(Women|Men)\b/i, m => { g = /women/i.test(m) ? "femmes" : "hommes"; return ""; }).trim();
+  for (const [a, b] of [["Single Mixed Relay", "Relais mixte simple"], ["Mixed Relay", "Relais mixte"], ["Mass Start", "Mass start"], ["Pursuit", "Poursuite"], ["Individual", "Individuel"], ["Super Sprint", "Super sprint"], ["Relay", "Relais"]]) s = s.replace(new RegExp(a, "i"), b);
+  return (s.replace(/(\d+)\.(\d+)\s*km/g, "$1,$2 km").replace(/(\d+)km/g, "$1 km") + (g ? " " + g : "")).trim();
+};
+async function biathlon() {
+  const base = "https://biathlonresults.com/modules/sportapi/api/", now = new Date();
+  const y = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+  const season = String(y % 100).padStart(2, "0") + String((y + 1) % 100).padStart(2, "0"), today = now.toISOString().slice(0, 10), out = [];
+  const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.Events || j.Competitions)) || []);
+  for (const level of [0, 1, 2]) {
+    let evs = [];
+    try { evs = arr(await get(`${base}Events?SeasonId=${season}&Level=${level}`)); } catch (e) { if (level === 1) throw e; }
+    for (const ev of evs) {
+      const desc = (ev.Description || "") + " " + (ev.ShortDescription || "");
+      let l = null;
+      if (/world championships/i.test(desc) && !/junior|youth|summer/i.test(desc)) l = "bch";
+      else if (level === 1) l = "bwc";
+      else if (level === 2 && /european championships/i.test(desc) && !/junior|youth/i.test(desc)) l = "beu";
+      if (!l || !ev.EventId) continue;
+      if (ev.EndDate && String(ev.EndDate).slice(0, 10) < today) continue;
+      const place = ev.ShortDescription || ev.Organizer || ev.Description;
+      for (const c of arr(await get(`${base}Competitions?EventId=${ev.EventId}`))) {
+        let d, t = "";
+        const utc = c.UTCStartTime || c.StartTimeUTC;
+        if (utc) ({ d, t } = paris(/[zZ]|[+-]\d\d:?\d\d$/.test(utc) ? utc : utc + "Z"));
+        else if (c.StartTime && typeof ev.UTCOffset === "number") ({ d, t } = paris(new Date(new Date(c.StartTime + "Z") - ev.UTCOffset * 36e5).toISOString()));
+        else if (c.StartTime) d = String(c.StartTime).slice(0, 10);
+        else continue;
+        out.push({ d, t, l, ti: place + " : " + frRace(c.Description || c.ShortDescription), de: ev.Description || place });
+      }
+      await sleep(150);
+    }
+  }
+  return out;
+}
+
+// ---------- MotoGP : interface publique du site officiel (heures avec décalage, converties en heure de Paris) ----------
+async function motogp() {
+  const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), out = [];
+  const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
+  for (const s of arr(await get(base + "seasons")).filter(x => [y, y + 1].includes(+x.year))) {
+    for (const e of arr(await get(`${base}events?seasonUuid=${s.id}`))) {
+      if (e.test) continue;
+      const end = String(e.date_end || e.dateEnd || "").slice(0, 10);
+      if (end && end < today) continue;
+      const cat = arr(await get(`${base}categories?eventUuid=${e.id}`)).find(c => /^motogp/i.test(c.name || ""));
+      if (!cat) continue;
+      const place = gp(e.name || (e.country && e.country.name) || "");
+      for (const x of arr(await get(`${base}sessions?eventUuid=${e.id}&categoryUuid=${cat.id}`))) {
+        if (!x.date) continue;
+        const sn = String(x.name || x.type || "").toLowerCase(), no = (sn.match(/(\d)/) || [])[1], num = no ? " " + no : "";
+        const lab = /sprint/.test(sn) ? "Sprint" : /race/.test(sn) ? "Course" : /warm/.test(sn) ? "Warm-up" : /qualif|^q\d/.test(sn) ? "Qualifications" + num
+          : /free practice|^fp/.test(sn) ? "Essais libres" + num : /practice|^pr/.test(sn) ? "Practice" : (x.name || x.type);
+        const iso = String(x.date), hasTz = /[zZ]|[+-]\d\d:?\d\d$/.test(iso);
+        const { d, t } = hasTz ? paris(iso) : { d: iso.slice(0, 10), t: "" };
+        out.push({ d, t, l: "moto", ti: place + " : " + lab, de: (e.circuit && e.circuit.name) || e.sname || "MotoGP" });
+      }
+      await sleep(150);
+    }
+  }
+  return out;
+}
+
 async function main() {
   const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
   let events = data.events, fails = 0;
@@ -179,13 +294,17 @@ async function main() {
     ["bl", () => espn("soccer", "ger.1", "bl", "Bundesliga")],
     ["nfl", () => espn("football", "nfl", "nfl", "NFL")],
     ["nhl", () => espn("hockey", "nhl", "nhl", "NHL")],
-    ["ufc", () => espn("mma", "ufc", "ufc", "UFC")]];
-  for (const [l, fn] of sources) {
+    ["ufc", () => espn("mma", "ufc", "ufc", "UFC")],
+    ["moto", motogp],
+    ["euro", euroleague],
+    ["biathlon", biathlon, ["bwc", "bch", "beu"]]];
+  events = events.filter(e => e.l !== "elite"); // Betclic Élite : uniquement les vraies affiches saisies dans manual.json
+  for (const [l, fn, ls = [l]] of sources) {
     try {
       const fresh = await fn();
       if (!fresh.length) throw new Error("aucun événement reçu");
-      events = events.filter(e => e.l !== l).concat(fresh);
-      real.add(l);
+      events = events.filter(e => !ls.includes(e.l)).concat(fresh);
+      fresh.forEach(e => real.add(e.l));
       console.log(l, "OK :", fresh.length, "événements");
     } catch (e) {
       fails++;
