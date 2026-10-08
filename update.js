@@ -112,6 +112,7 @@ const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
 // Football, rugby, NFL, NHL et UFC via le service public d'ESPN (sans clé).
 // Identifiants : soccer/fra.1 = Ligue 1, rugby/270559 = Top 14, football/nfl, hockey/nhl, mma/ufc, etc.
 const TEAMS = {};
+const SPORT = { soccer: "foot", rugby: "rugby", football: "usfoot", hockey: "hockey", mma: "mma" };
 const hex = v => (v && /^[0-9a-f]{6}$/i.test(v) ? "#" + v : null);
 const rec = (x, k) => {
   const t = x.team;
@@ -161,7 +162,7 @@ async function espn(sport, slug, l, label, win) {
       const h = cs.find(x => x.homeAway === "home") || cs[0], v = cs.find(x => x.homeAway === "away") || cs[1];
       if (!h || !v || !h.team || !v.team) continue;
       const nm = x => x.team.shortDisplayName || x.team.displayName;
-      rec(h, nm(h)); rec(v, nm(v));
+      rec(h, SPORT[sport] + "|" + nm(h)); rec(v, SPORT[sport] + "|" + nm(v));
       seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: venue });
     }
   }

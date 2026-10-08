@@ -187,7 +187,8 @@ const lsg=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){retu
 const hid=new Set(lsg("mds_hid")),fl=new Set(lsg("mds_fl")),ft=new Set(lsg("mds_ft"));
 const sv=()=>{try{localStorage.setItem("mds_hid",JSON.stringify([...hid]));localStorage.setItem("mds_fl",JSON.stringify([...fl]));localStorage.setItem("mds_ft",JSON.stringify([...ft]))}catch(e){}};
 let fav=false;
-const isFav=e=>fl.has(e.l)||teams(e).some(t=>ft.has(t)),hasFav=()=>fl.size+ft.size>0;
+const tkeys=e=>teams(e).map(t=>L[e.l].sp+"|"+t),tname=k=>k.includes("|")?k.slice(k.indexOf("|")+1):k,tlbl=k=>{const s=k.includes("|")?k.split("|")[0]:"";return(SP[s]?SP[s].e+" ":"")+tname(k)};
+const isFav=e=>fl.has(e.l)||tkeys(e).some(t=>ft.has(t)),hasFav=()=>fl.size+ft.size>0;
 const vis=()=>EV.filter(e=>!hid.has(e.l)&&(fav?isFav(e):(sp==="all"||L[e.l].sp===sp)&&(lg==="all"||e.l===lg)&&(tm==="all"||teams(e).includes(tm))));
 const dl=k=>{const[a,b,c]=k.split("-");return new Date(a,b-1,c).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})};
 const hh=t=>t.replace(":","h");
@@ -234,23 +235,23 @@ $("#nx").innerHTML=nx.slice(0,6).map(e=>rw(e,1)).join("");
 }
 const ckey="mds_club";
 let club=(()=>{try{return localStorage.getItem(ckey)}catch(e){return null}})(),cAll=false;
-const teamsAll=()=>[...new Set(EV.flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
-const clubName=()=>club||teamsAll().find(n=>/nantes/i.test(n))||"";
+const teamsAll=()=>[...new Set(EV.flatMap(tkeys))].sort((a,b)=>tname(a).localeCompare(tname(b),"fr"));
+const clubName=()=>club||teamsAll().find(k=>/nantes/i.test(tname(k)))||"";
 const BUILTIN=[[/nantes/i,"#f6c800","#0b7a3e"]];
 const lum=x=>{const n=parseInt(x.slice(1),16),f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(n>>16&255)+.7152*f(n>>8&255)+.0722*f(n&255)};
-function clubColor(c,mine){const m=TM[c]||{},b=BUILTIN.find(x=>x[0].test(c)),cand=[m.color,m.alt,b&&b[1],b&&b[2]].filter(Boolean);return cand.find(x=>lum(x)>.03&&lum(x)<.85)||cand[0]||(mine[0]?L[mine[0].l].c:"#ff5a00")}
+function clubColor(c,m,mine){const b=BUILTIN.find(x=>x[0].test(c)),cand=[m.color,m.alt,b&&b[1],b&&b[2]].filter(Boolean);return cand.find(x=>lum(x)>.03&&lum(x)<.85)||cand[0]||(mine[0]?L[mine[0].l].c:"#ff5a00")}
 function clubPage(){
-const c=clubName(),k=tk(),hm=pad(now.getHours())+":"+pad(now.getMinutes());
-$("#cname").textContent=c||"My Club";
+const c=clubName(),cn=tname(c),k=tk(),hm=pad(now.getHours())+":"+pad(now.getMinutes());
+$("#cname").textContent=cn||"My Club";
 if(!c){document.documentElement.style.setProperty("--club","#ff5a00");$("#clogo").innerHTML=""}
 if(!c){$("#csub").textContent="Choisis ton club avec « Changer de club ».";$("#chero").innerHTML="";$("#clist").innerHTML="";$("#cmore").hidden=true;return}
-const mine=EV.filter(e=>teams(e).includes(c)),up=mine.filter(e=>e.d>k||(e.d===k&&(!e.t||e.t>=hm)));
+const mine=EV.filter(e=>tkeys(e).includes(c)),up=mine.filter(e=>e.d>k||(e.d===k&&(!e.t||e.t>=hm)));
 $("#csub").textContent=mine.length?"Compétitions : "+[...new Set(mine.map(e=>L[e.l].f))].join(", "):"Aucun match trouvé pour l'instant.";
-const f=up[0],opp=e=>teams(e).find(t=>t!==c),dom=e=>e.ti.startsWith(c+" - ");
-const col=clubColor(c,mine),m=TM[c]||{},ini=(c.split(/[\s-]+/).filter(w=>!/^(fc|as|sc|us|ac|rc|ssc|og|ogc|cf)$/i.test(w)).slice(0,2).map(w=>w[0]).join("")||c[0]).toUpperCase();
+const f=up[0],opp=e=>teams(e).find(t=>t!==cn),dom=e=>e.ti.startsWith(cn+" - ");
+const m=TM[c]||TM[cn]||{},col=clubColor(cn,m,mine),ini=(cn.split(/[\s-]+/).filter(w=>!/^(fc|as|sc|us|ac|rc|ssc|og|ogc|cf)$/i.test(w)).slice(0,2).map(w=>w[0]).join("")||cn[0]).toUpperCase();
 document.documentElement.style.setProperty("--club",col);
 const badge=`<div class="cbadge"${m.logo?" hidden":""} style="color:${lum(col)>.35?"#0e0e10":"#fff"}">${ini}</div>`;
-$("#clogo").innerHTML=(m.logo?`<img class="clogo" src="${m.logo}" alt="${c}" onerror="this.style.display='none';this.nextElementSibling.hidden=false">`:"")+badge;
+$("#clogo").innerHTML=(m.logo?`<img class="clogo" src="${m.logo}" alt="${cn}" onerror="this.style.display='none';this.nextElementSibling.hidden=false">`:"")+badge;
 $("#chero").innerHTML=f?hero(f,k,false,"Prochain match · "+(dom(f)?"à domicile":"à l'extérieur")):"";
 const rest=up.slice(f?1:0),shown=cAll?rest:rest.slice(0,12);
 $("#clist").innerHTML=shown.length?shown.map(e=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${sd(e.d)}${e.t?" "+hh(e.t):""}</b> ${SP[l.sp].e} ${dom(e)?"reçoit":"se déplace à"} ${opp(e)} <span class="meta">(${l.f})</span></button>`}).join(""):(f?"":'<p class="empty">Aucun rendez-vous à venir.</p>');
@@ -259,16 +260,22 @@ $("#cmore").hidden=cAll||rest.length<=12;
 function clubChoose(){
 show('<h3>Changer de club</h3><p class="meta">Tape le nom de l\'équipe, puis choisis-la dans la liste.</p><input id="cq" placeholder="Nantes, PSG, Lakers, Toulouse…" autocomplete="off" style="width:100%;padding:9px 12px;margin:6px 0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><div id="cres" class="chips"></div>');
 }
-function cres(){const q=$("#cq").value.trim().toLowerCase();$("#cres").innerHTML=q.length<2?"":(teamsAll().filter(n=>n.toLowerCase().includes(q)).slice(0,12).map(n=>`<button class="chip sm" data-club="${n}">${n}</button>`).join("")||'<span class="meta">Aucune équipe trouvée.</span>')}
+function cres(){const q=$("#cq").value.trim().toLowerCase();$("#cres").innerHTML=q.length<2?"":(teamsAll().filter(k=>tname(k).toLowerCase().includes(q)).slice(0,12).map(k=>`<button class="chip sm" data-club="${k}">${tlbl(k)}</button>`).join("")||'<span class="meta">Aucune équipe trouvée.</span>')}
+function migrate(){
+let ch=false;const keys=EV.flatMap(tkeys);
+for(const n of [...ft]){if(n.includes("|"))continue;ft.delete(n);ch=true;[...new Set(keys.filter(k=>tname(k)===n))].forEach(k=>ft.add(k))}
+if(club&&!club.includes("|")){const ks=[...new Set(keys.filter(k=>tname(k)===club))];club=ks[0]||club;ch=true;try{localStorage.setItem(ckey,club)}catch(e){}}
+if(ch)sv();
+}
 function refresh(){
 if(sp!=="all"&&!Object.entries(L).some(([k,l])=>l.sp===sp&&!hid.has(k)))sp="all";
 if(lg!=="all"&&hid.has(lg))lg="all";
 if(fav&&!hasFav())fav=false;
 filters();grid();home();
 }
-const allTeams=()=>[...new Set(EV.filter(e=>!hid.has(e.l)).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
-function tfav(){$("#tfav").innerHTML=[...ft].map(n=>`<button class="chip sm" aria-pressed="true" data-fx="${n}">${n} ×</button>`).join("")||'<span class="meta">Aucune équipe pour l\'instant.</span>'}
-function tres(){const q=$("#tq").value.trim().toLowerCase();$("#tres").innerHTML=q.length<2?"":(allTeams().filter(n=>n.toLowerCase().includes(q)&&!ft.has(n)).slice(0,10).map(n=>`<button class="chip sm" data-ft="${n}">+ ${n}</button>`).join("")||'<span class="meta">Aucune équipe trouvée.</span>')}
+const allTeams=()=>[...new Set(EV.filter(e=>!hid.has(e.l)).flatMap(tkeys))].sort((a,b)=>tname(a).localeCompare(tname(b),"fr"));
+function tfav(){$("#tfav").innerHTML=[...ft].map(n=>`<button class="chip sm" aria-pressed="true" data-fx="${n}">${tlbl(n)} ×</button>`).join("")||'<span class="meta">Aucune équipe pour l\'instant.</span>'}
+function tres(){const q=$("#tq").value.trim().toLowerCase();$("#tres").innerHTML=q.length<2?"":(allTeams().filter(n=>tname(n).toLowerCase().includes(q)&&!ft.has(n)).slice(0,10).map(n=>`<button class="chip sm" data-ft="${n}">+ ${tlbl(n)}</button>`).join("")||'<span class="meta">Aucune équipe trouvée.</span>')}
 function cfgOpen(){
 let x='<h3>Mes compétitions</h3><p class="meta">Décoche ce qui ne t\'intéresse pas du tout. L\'étoile marque ce que tu veux suivre en priorité.</p>';
 for(const [s,v] of Object.entries(SP)){
@@ -312,7 +319,7 @@ else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
 document.addEventListener("input",e=>{if(e.target.id==="tq")tres();if(e.target.id==="cq")cres()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
 addEventListener("resize",grid);
-Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{TM=j.teams||{};const mx={};j.events.forEach(e=>{if((j.real||[]).includes(e.l)&&(!mx[e.l]||e.d>mx[e.l]))mx[e.l]=e.d});EV=j.events.concat(m.events.filter(e=>!(mx[e.l]&&e.d<=mx[e.l]))).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.entries(L).filter(([k,l])=>!l.r&&EV.some(e=>e.l===k)).map(([k,l])=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
+Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{TM=j.teams||{};const mx={};j.events.forEach(e=>{if((j.real||[]).includes(e.l)&&(!mx[e.l]||e.d>mx[e.l]))mx[e.l]=e.d});EV=j.events.concat(m.events.filter(e=>!(mx[e.l]&&e.d<=mx[e.l]))).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));migrate();(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.entries(L).filter(([k,l])=>!l.r&&EV.some(e=>e.l===k)).map(([k,l])=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
 </script>
 </body>
 </html>
