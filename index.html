@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="My Daily Sports">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#15110f">
+<meta name="theme-color" content="#0e0e10">
 <title>My Daily Sports</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f7efe4;--card:#fffaf3;--ink:#1d1712;--mut:#7a6a5a;--line:#e6d8c6}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15110f;--card:#1f1915;--ink:#f6efe7;--mut:#a8998a;--line:#352b24}}
-:root[data-theme="dark"]{--bg:#15110f;--card:#1f1915;--ink:#f6efe7;--mut:#a8998a;--line:#352b24}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#0e0e10;--card:#18181b;--ink:#f5f5f4;--mut:#a1a1aa;--line:#2c2c31}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e0e10;--card:#18181b;--ink:#f5f5f4;--mut:#a1a1aa;--line:#2c2c31}}
+:root[data-theme="dark"]{--bg:#0e0e10;--card:#18181b;--ink:#f5f5f4;--mut:#a1a1aa;--line:#2c2c31}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.35 "Barlow Condensed","Arial Narrow",system-ui,sans-serif}
@@ -27,7 +27,7 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .sc{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
 .chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-weight:600;cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:#ff5a00;color:#0e0e10;border-color:#ff5a00}
 .chip:focus-visible,.ev:focus-visible,.dn:focus-visible,.row:focus-visible,.nb:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .nav{display:flex;align-items:center;gap:8px;margin:14px 0 8px}
 .nav h2{flex:1;margin:0;font-size:24px;font-weight:700;text-transform:capitalize}
@@ -37,7 +37,7 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 .dow{margin-bottom:4px;color:var(--mut);font-weight:600;font-size:14px;text-align:center}
 .cell{min-height:92px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
 .cell.out{background:transparent;border-color:transparent}
-.cell.today{border:2px solid var(--ink)}
+.cell.today{border:2px solid #ff5a00}
 .dn{background:none;border:0;padding:0 2px;text-align:left;color:var(--mut);font-weight:700;cursor:pointer;font-size:14px}
 .ev{display:flex;align-items:center;gap:3px;width:100%;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 18%,var(--card));border-radius:4px;padding:2px 3px;font-size:13px;font-weight:700;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden}
 .ev span{overflow:hidden;text-overflow:ellipsis}
@@ -54,7 +54,7 @@ h1{font-size:30px;line-height:1.1;margin:0 0 4px;font-weight:700}
 .row{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--card));border-radius:6px;padding:8px 10px;margin:6px 0;cursor:pointer;font-weight:600}
 .x{margin-top:12px}
 .date{margin:0 0 14px;color:var(--mut);font-size:21px;font-weight:600}.date::first-letter{text-transform:uppercase}
-.go{display:block;width:100%;border:0;border-radius:12px;background:linear-gradient(110deg,#f43f5e,#f97316 55%,#fbbf24);color:#1a0f0a;font:700 22px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:14px;cursor:pointer;margin:0 0 8px}
+.go{display:block;width:100%;border:0;border-radius:12px;background:#ff5a00;color:#0e0e10;font:700 22px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:14px;cursor:pointer;margin:0 0 8px}
 .go:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .sec{font-size:24px;margin:22px 0 6px;font-weight:700}
 .back{margin-bottom:10px}
@@ -70,10 +70,14 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 #tq{width:100%;padding:9px 12px;margin:6px 0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
 .cfg{display:block;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;font:600 17px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 6px}
 .topbar{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.wordmark{display:block;width:min(280px,72vw);height:auto;margin:10px auto 4px}
+.brand2{text-align:center}
+.brand2 .date{margin:10px 0 8px;text-align:center}
 .brand{display:flex;align-items:center;gap:14px;margin-bottom:12px}
 .brand .date{margin:0;font-size:19px}
 .logo{border-radius:12px;flex:none}
-.hello{font-size:23px;font-weight:600;margin:4px 0 16px;line-height:1.2}
+.hello{font-size:23px;font-weight:600;margin:4px 0 16px;line-height:1.2;text-align:center}
 .hk0{font-size:15px;font-weight:600;color:var(--mut);margin:0 0 6px}
 .hero{display:flex;gap:14px;align-items:center;width:100%;text-align:left;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));border-left:5px solid var(--c);border-radius:16px;padding:14px 16px;background:linear-gradient(120deg,color-mix(in srgb,var(--c) 22%,var(--card)),var(--card));cursor:pointer;margin-bottom:14px}
 .hero:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -83,13 +87,14 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 .ht{font-size:25px;font-weight:700;line-height:1.15}
 .hl{font-size:15px;color:var(--mut)}
 #home .note{margin-top:22px}
+@media (max-width:719px){.ev span:first-child{display:none}.ev{font-size:12px;padding:3px 4px}}
 @media (min-width:720px){.s{display:none}.f{display:inline}.cell{min-height:112px}.wrap{padding:24px 16px 40px}h1{font-size:38px}.ov{align-items:center}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <section id="home">
-<header class="brand"><img class="logo" src="favicon.svg" alt="" width="54" height="54"><div><h1>My Daily Sports</h1><p class="date" id="today"></p></div></header>
+<header class="brand2"><h1 class="sr">My Daily Sports</h1><img class="wordmark" src="logo-full.png" alt="My Daily Sports" width="1000" height="425"><p class="date" id="today"></p></header>
 <p class="hello" id="hello"></p>
 <div id="hero"></div>
 <button class="go" data-go="cal">📅 Ouvrir le calendrier</button>
@@ -127,7 +132,7 @@ ldn:{n:"Ligue des Nations",s:"LDN",f:"Ligue des Nations",sp:"foot",c:"#7c3aed"},
 nba:{n:"NBA",s:"NBA",f:"NBA",sp:"basket",c:"#ea580c"},
 elite:{n:"Betclic Élite",s:"Élite",f:"Betclic Élite",sp:"basket",c:"#d97706"},
 euro:{n:"Euroligue",s:"Euro",f:"Euroligue",sp:"basket",c:"#c2410c"},
-moto:{n:"MotoGP",s:"Moto",f:"MotoGP",sp:"moto",c:"#65a30d"},
+moto:{n:"MotoGP",s:"MGP",f:"MotoGP",sp:"moto",c:"#65a30d"},
 f1:{n:"Formule 1",s:"F1",f:"F1",sp:"f1",c:"#e11d48"},
 ucl:{n:"Ligue des champions",s:"LDC",f:"Ligue des champions",sp:"foot",c:"#0ea5e9"},
 uel:{n:"Europa League",s:"UEL",f:"Europa League",sp:"foot",c:"#be185d"},
