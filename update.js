@@ -363,6 +363,67 @@ async function motogp() {
   return out;
 }
 
+// ---------- Classements (ESPN, Jolpica, MotoGP) ----------
+const FRN = n => String(n || "").replace(/Eastern Conference/i, "Conférence Est").replace(/Western Conference/i, "Conférence Ouest").replace(/American Football Conference/i, "AFC").replace(/National Football Conference/i, "NFC");
+const numv = v => (v == null || v === "" || isNaN(+v) ? null : +v);
+const clean = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && v !== ""));
+async function espnTable(sport, slug) {
+  const j = await get(`https://site.api.espn.com/apis/v2/sports/${sport}/${slug}/standings`), out = [];
+  const walk = n => {
+    if (!n) return;
+    if (n.standings && Array.isArray(n.standings.entries) && n.standings.entries.length) {
+      const rows = n.standings.entries.map((en, i) => {
+        const st = {}; (en.stats || []).forEach(x => { st[x.name] = x.value != null ? x.value : x.displayValue; });
+        const t = en.team && (en.team.shortDisplayName || en.team.displayName);
+        const pct = numv(st.winPercent);
+        return clean({ r: numv(st.rank) || i + 1, t, g: numv(st.gamesPlayed), w: numv(st.wins), d: numv(st.ties != null ? st.ties : st.draws), l: numv(st.losses),
+          pts: numv(st.points), gd: numv(st.pointDifferential != null ? st.pointDifferential : st.goalDifference), pct: pct == null ? null : Math.round(pct * 1000) / 1000, gb: numv(st.gamesBehind) });
+      }).filter(r => r.t).sort((a, b) => a.r - b.r);
+      if (rows.length) out.push({ name: FRN(n.name || n.abbreviation || ""), rows });
+    }
+    (n.children || []).forEach(walk);
+  };
+  walk(j);
+  return out;
+}
+async function f1Standings() {
+  const y = new Date().getUTCFullYear(), out = [];
+  const dl = (await get(`https://api.jolpi.ca/ergast/f1/${y}/driverstandings.json`)).MRData.StandingsTable.StandingsLists[0];
+  if (dl) out.push({ name: "Pilotes", rows: dl.DriverStandings.map(x => clean({ r: numv(x.position), t: x.Driver.givenName + " " + x.Driver.familyName, sub: x.Constructors && x.Constructors[0] && x.Constructors[0].name, w: numv(x.wins), pts: numv(x.points) })) });
+  await sleep(300);
+  const cl = (await get(`https://api.jolpi.ca/ergast/f1/${y}/constructorstandings.json`)).MRData.StandingsTable.StandingsLists[0];
+  if (cl) out.push({ name: "Constructeurs", rows: cl.ConstructorStandings.map(x => clean({ r: numv(x.position), t: x.Constructor.name, w: numv(x.wins), pts: numv(x.points) })) });
+  return out;
+}
+const tcw = w => (w.length > 3 && w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w);
+async function motoStandings() {
+  const base = "https://api.motogp.pulselive.com/motogp/v1/results/", y = new Date().getUTCFullYear();
+  const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
+  const se = arr(await get(base + "seasons")).find(x => +x.year === y);
+  if (!se) return [];
+  const cat = arr(await get(`${base}categories?seasonUuid=${se.id}`)).find(c => /^motogp/i.test(c.name || ""));
+  if (!cat) return [];
+  const j = await get(`${base}standings?seasonUuid=${se.id}&categoryUuid=${cat.id}`);
+  const rows = (Array.isArray(j) ? j : j.classification || j.data || []).map((x, i) => {
+    const ri = x.rider || {}, fn = String(ri.full_name || x.name || "");
+    return clean({ r: numv(x.position) || i + 1, t: fn.split(" ").map(tcw).join(" "), sub: x.team && (x.team.name || (typeof x.team === "string" ? x.team : null)), pts: numv(x.points) });
+  }).filter(r => r.t);
+  return rows.length ? [{ name: "Pilotes", rows }] : [];
+}
+// Classement calculé à partir des résultats enregistrés (Euroligue : victoires, puis différence de points)
+function computeTable(events, l) {
+  const T = {};
+  for (const e of events) {
+    if (e.l !== l || !e.fin) continue;
+    const m = String(e.sc || "").match(/^(\d+)-(\d+)$/), p = e.ti.split(" - ");
+    if (!m || p.length < 2) continue;
+    const h = p[0], a = p.slice(1).join(" - "), hs = +m[1], as = +m[2];
+    for (const [n, f, c] of [[h, hs, as], [a, as, hs]]) { const o = T[n] || (T[n] = { g: 0, w: 0, l: 0, f: 0, c: 0 }); o.g++; o.f += f; o.c += c; f > c ? o.w++ : o.l++; }
+  }
+  const rows = Object.entries(T).sort((x, y) => y[1].w - x[1].w || (y[1].f - y[1].c) - (x[1].f - x[1].c)).map(([t, o], i) => ({ r: i + 1, t, g: o.g, w: o.w, l: o.l, gd: o.f - o.c, pts: o.w }));
+  return rows.length ? [{ name: "Classement", rows }] : [];
+}
+
 async function main() {
   const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
   OLD = data.events;
@@ -409,10 +470,27 @@ async function main() {
       console.error(l, "ÉCHEC, anciennes données conservées :", e.message);
     }
   }
+  const stand = Object.assign({}, data.standings || {});
+  const tasks = [["l1", "soccer", "fra.1"], ["l2", "soccer", "fra.2"], ["pl", "soccer", "eng.1"], ["liga", "soccer", "esp.1"], ["sa", "soccer", "ita.1"], ["bl", "soccer", "ger.1"],
+    ["ucl", "soccer", "uefa.champions"], ["uel", "soccer", "uefa.europa"], ["ldn", "soccer", "uefa.nations"], ["rt14", "rugby", "270559"], ["rec", "rugby", "271937"], ["r6n", "rugby", "180659"],
+    ["nba", "basketball", "nba"], ["nfl", "football", "nfl"], ["nhl", "hockey", "nhl"]];
+  for (const [l, sp, slug] of tasks) {
+    try {
+      const g = await espnTable(sp, slug);
+      if (g.length) { stand[l] = g; console.log("classement", l, "OK :", g.reduce((n, x) => n + x.rows.length, 0), "lignes"); } else console.log("classement", l, ": aucun tableau reçu");
+    } catch (e) { console.error("classement", l, "ÉCHEC :", e.message.slice(0, 160)); }
+    await sleep(150);
+  }
+  for (const [l, fn] of [["f1", f1Standings], ["moto", motoStandings]]) {
+    try { const g = await fn(); if (g.length) { stand[l] = g; console.log("classement", l, "OK :", g.reduce((n, x) => n + x.rows.length, 0), "lignes"); } else console.log("classement", l, ": aucun tableau reçu"); }
+    catch (e) { console.error("classement", l, "ÉCHEC :", e.message.slice(0, 160)); }
+  }
+  const eu = computeTable(events, "euro");
+  if (eu.length) { stand.euro = eu; console.log("classement euro calculé :", eu[0].rows.length, "équipes"); }
   const cmp = (a, b) => (a.d + a.t + a.l + a.ti).localeCompare(b.d + b.t + b.l + b.ti);
-  const body = o => '"backfilled":' + (o.backfilled ? "true" : "false") + ',"real":' + JSON.stringify(o.real) + ',"teams":' + JSON.stringify(o.teams) + ',"events":[\n' + o.events.map(e => JSON.stringify(e)).join(",\n") + "\n]}";
-  const avant = body({ backfilled: !!data.backfilled, real: data.real || [], teams: data.teams || {}, events: [...data.events].sort(cmp) });
-  const apres = body({ backfilled: LIGHT ? !!data.backfilled : true, real: [...real], teams: Object.assign({}, data.teams || {}, TEAMS), events: [...events].sort(cmp) });
+  const body = o => '"backfilled":' + (o.backfilled ? "true" : "false") + ',"real":' + JSON.stringify(o.real) + ',"teams":' + JSON.stringify(o.teams) + ',"standings":' + JSON.stringify(o.standings || {}) + ',"events":[\n' + o.events.map(e => JSON.stringify(e)).join(",\n") + "\n]}";
+  const avant = body({ backfilled: !!data.backfilled, real: data.real || [], teams: data.teams || {}, standings: data.standings || {}, events: [...data.events].sort(cmp) });
+  const apres = body({ backfilled: LIGHT ? !!data.backfilled : true, real: [...real], teams: Object.assign({}, data.teams || {}, TEAMS), standings: stand, events: [...events].sort(cmp) });
   if (apres === avant) console.log("Aucun changement : data.json reste inchangé");
   else fs.writeFileSync(FILE, '{"updatedAt":"' + new Date().toISOString() + '",' + apres);
   if (fails === sources.length) process.exitCode = 1;
