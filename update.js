@@ -6,6 +6,8 @@ const LIGHT = process.env.MODE === "results";   // mode « résultats » : ne re
 let OLD = [];                                      // données déjà enregistrées (pour rattraper les résultats manquants)
 let BACK = 100;                                   // jours passés relus (100 au premier passage, 3 ensuite)
 const dd = d => d.toISOString().slice(0, 10);
+const warned = {};
+const warn1 = (k, m) => { if (!warned[k]) { warned[k] = 1; console.error(k, "résultats :", m); } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const paris = iso => {
@@ -299,8 +301,9 @@ async function biathlon() {
             const rk = x => String(x.Rank != null && x.Rank !== "" ? x.Rank : x.ResultOrder);
             const rows = (Array.isArray(rj) ? rj : rj.Results || rj.data || []).filter(x => /^\d+$/.test(rk(x))).sort((p, q) => +rk(p) - +rk(q)).slice(0, 3);
             const team = /relay/i.test(c.Description || "");
+            if (rows.length < 3) warn1("biathlon", "réponse inattendue : " + JSON.stringify(rj).slice(0, 300));
             if (rows.length === 3) res = rows.map(x => rk(x) + ". " + (team ? (x.Nat || x.ShortName || x.Name) : (x.ShortName || x.FamilyName || x.Name))).join(" · ");
-          } catch (e) {}
+          } catch (e) { warn1("biathlon", e.message.slice(0, 250)); }
           await sleep(120);
         }
         out.push({ d, t, l, ti: place + " : " + frRace(c.Description || c.ShortDescription), de: ev.Description || place, ...(res ? { sc: res, fin: 1 } : {}) });
@@ -314,6 +317,7 @@ async function biathlon() {
 
 // ---------- MotoGP : interface publique du site officiel (heures avec décalage, converties en heure de Paris) ----------
 async function motogp() {
+  let asked = 0, read = 0;
   const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && !OLD.some(e => e.l === "moto" && e.sc) ? 100 : BACK) * 864e5)), out = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
   for (const s of arr(await get(base + "seasons")).filter(x => [y, y + 1].includes(+x.year))) {
@@ -335,11 +339,14 @@ async function motogp() {
         const started = d < today || (d === today && t && t < paris(now.toISOString()).t);
         if (x.id && started && /^(Course|Sprint|Qualifications 2)$/.test(lab) && (!LIGHT || d >= dd(new Date(+now - 4 * 864e5)))) {
           try {
+            asked++;
             const cj = await get(`${base}session/${x.id}/classification?seasonYear=${s.year}&test=false`), rows = (Array.isArray(cj) ? cj : cj.classification || cj.data || []).slice(0, 3);
+            if (rows.length < 3) warn1("moto", "réponse inattendue : " + JSON.stringify(cj).slice(0, 300));
             const tc = w => (w.length > 3 && w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w);
             const nmr = r => { const ri = r.rider || {}, fn = String(ri.full_name || r.name || ""), m = fn.match(/(?:^|\s)([A-ZÀ-ÝÑ'’-]{2,}(?:\s+[A-ZÀ-ÝÑ'’-]{2,})*)$/); return ri.surname ? tc(ri.surname) : m ? m[1].split(/\s+/).map(tc).join(" ") : fn.split(" ").slice(-1)[0] || "?"; };
+            if (rows.length === 3) read++;
             if (rows.length === 3) res = (lab === "Qualifications 2" ? "Pole : " : "1. ") + nmr(rows[0]) + " · 2. " + nmr(rows[1]) + " · 3. " + nmr(rows[2]);
-          } catch (e) {}
+          } catch (e) { warn1("moto", e.message.slice(0, 250)); }
           await sleep(120);
         }
         out.push({ d, t, l: "moto", ti: place + " : " + lab, de: (e.circuit && e.circuit.name) || e.sname || "MotoGP", ...(res ? { sc: res, fin: 1 } : {}) });
@@ -347,6 +354,7 @@ async function motogp() {
       await sleep(150);
     }
   }
+  console.log("moto : classements demandés", asked, "| lus", read);
   return out;
 }
 

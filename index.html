@@ -71,6 +71,13 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 .cfg{display:block;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;font:600 17px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 6px}
 [hidden]{display:none!important}
 .ev.done{opacity:.5}
+.acc{display:flex;align-items:center;gap:8px;width:100%;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:12px 14px;margin:10px 0 0;font:700 21px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;text-align:left}
+.acc .cnt{background:#ff5a00;color:#0e0e10;border-radius:999px;padding:0 10px;font-size:16px;line-height:24px}
+.acc .cnt.z{background:#3f3f46;color:var(--mut)}
+.acc .chev{margin-left:auto;transition:transform .15s}
+.acc[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.acc:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.accb{padding-top:6px}
 .score{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 14px;text-align:center}
 .score span{flex:1;font-size:21px;font-weight:700;line-height:1.15}
 .score b{font-size:42px;white-space:nowrap}
@@ -121,11 +128,9 @@ body.clubmode{background:linear-gradient(180deg,color-mix(in srgb,var(--club,#ff
 <button class="go" data-go="cal">📅 Ouvrir le calendrier</button>
 <button class="club" data-go="club">🛡️ My Club</button>
 <button class="cfg" id="cfg">⚙️ Mes compétitions et mes favoris</button>
-<h2 class="sec">Au programme aujourd'hui</h2>
 <div id="tl"></div>
 <div id="fv"></div>
 <div id="rs"></div>
-<h2 class="sec">Prochainement</h2>
 <div id="nx"></div>
 <p class="note" id="src"></p>
 <p class="note" id="upd"></p>
@@ -237,6 +242,9 @@ const pscore=e=>{const m=(e.sc||"").match(/^(\d+)-(\d+)$/),p=e.ti.split(" - ");r
 const rtxt=e=>{const p=pscore(e);return p?`${p.hn} <b>${p.h}–${p.a}</b> ${p.an}`:`${e.ti} <span class="meta">${e.sc}</span>`};
 const rrow=e=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${sd(e.d)}</b> ${isFav(e)?"⭐ ":""}${SP[l.sp].e} ${spoil?e.ti+' <span class="meta">(score masqué)</span>':rtxt(e)}</button>`};
 const lastRes=a=>a.filter(e=>e.fin&&e.sc).sort((x,y)=>(y.d+y.t).localeCompare(x.d+x.t));
+const openS=new Set(lsg("mds_open"));
+const accS=(id,t,n,body)=>{const o=openS.has(id);return `<button class="acc" data-acc="${id}" aria-expanded="${o}">${t}<span class="cnt${n?"":" z"}">${n}</span><span class="chev">▾</span></button><div class="accb"${o?"":" hidden"}>${body}</div>`};
+const shortRes=e=>{if(!e.fin||!e.sc||spoil)return "";const p=pscore(e);return p?p.h+"–"+p.a:e.sc.split(" · ")[0]};
 const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${isFav(e)?"⭐ ":""}${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
 const hero=(e,k,f,lab)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">${lab||(f?"Prochain parmi mes favoris":"Prochain rendez-vous")}</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
 function home(){
@@ -246,11 +254,12 @@ const vs=EV.filter(e=>!hid.has(e.l)),fv=hasFav()?vs.filter(isFav):[],up=a=>a.fil
 const td=vs.filter(e=>e.d===k),nx=vs.filter(e=>e.d>k),uf=up(fv)[0],hh1=uf||up(vs)[0];
 $("#hello").textContent=g+" ! "+(td.length?(td.length===1?"Un rendez-vous sportif aujourd'hui.":td.length+" rendez-vous sportifs aujourd'hui."):"Pas de sport aujourd'hui, voici la suite.");
 $("#hero").innerHTML=hh1?hero(hh1,k,!!uf):"";
-$("#tl").innerHTML=td.length?td.map(e=>rw(e)).join(""):"<p class=\"empty\">Rien au programme aujourd'hui. Profites-en pour souffler !</p>";
+$("#tl").innerHTML=accS("tl","Au programme aujourd'hui",td.length,td.length?td.map(e=>rw(e)).join(""):"<p class=\"empty\">Rien au programme aujourd'hui. Profites-en pour souffler !</p>");
 const rs=lastRes(hasFav()?vs.filter(isFav):vs).slice(0,6);
-$("#rs").innerHTML=rs.length?'<h2 class="sec">Derniers résultats</h2>'+rs.map(rrow).join(""):"";
-$("#fv").innerHTML=fv.length?'<h2 class="sec">Mes favoris</h2>'+up(fv).slice(0,6).map(e=>rw(e,1)).join(""):"";
-$("#nx").innerHTML=nx.slice(0,6).map(e=>rw(e,1)).join("");
+$("#rs").innerHTML=rs.length?accS("rs","Derniers résultats",rs.length,rs.map(rrow).join("")):"";
+const fl6=up(fv).slice(0,6);
+$("#fv").innerHTML=fv.length?accS("fv","⭐ Mes favoris",fl6.length,fl6.map(e=>rw(e,1)).join("")):"";
+$("#nx").innerHTML=accS("nx","Prochainement",Math.min(6,nx.length),nx.slice(0,6).map(e=>rw(e,1)).join(""));
 }
 const ckey="mds_club";
 let club=(()=>{try{return localStorage.getItem(ckey)}catch(e){return null}})(),cAll=false;
@@ -314,14 +323,15 @@ function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";$("#club"
 const ov=$("#ov"),box=$("#box");
 function show(h){box.innerHTML=h+'<button class="chip x" data-x>Fermer</button>';ov.hidden=false}
 function resBlock(e,i,rev){
+if((!e.fin||!e.sc)&&e.d<tk()&&(e.ti.includes(" - ")||/Course|Sprint|Qualifications|Pole/.test(e.ti)))return '<p class="meta">Résultat non disponible pour l\'instant.</p>';
 if(!e.fin||!e.sc)return "";
 if(spoil&&!rev)return `<p class="res">Terminé · <button class="chip sm" data-reveal="${i}">Afficher le score</button></p>`;
 const p=pscore(e);
 return p?`<p class="meta">Terminé</p><div class="score"><span>${p.hn}</span><b>${p.h} – ${p.a}</b><span>${p.an}</span></div>`:`<p class="meta">Terminé</p><p class="res">${e.sc}</p>`;
 }
 function detail(i,rev){const e=EV[i],l=L[e.l];show(`<div class="badge" style="--c:${l.c}">${SP[l.sp].e}</div><h3>${e.ti}</h3><p class="meta">${dl(e.d)}${e.t?", "+hh(e.t):""}</p><p><span class="tag" style="--c:${l.c}">${l.n}</span></p>${resBlock(e,i,rev)}<p>${e.de}</p>${l.r?"":"<p class=\"meta\">Donnée d'exemple, à remplacer par la vraie.</p>"}`)}
-function grp(s){const[k,l]=s.split("|"),es=vis().filter(e=>e.d===k&&e.l===l);if(es.length===1)return detail(EV.indexOf(es[0]));show(`<h3>${L[l].f}</h3><p class="meta">${dl(k)}, ${es.length} ${unit(l)}</p>`+es.map(e=>`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(e)}">${e.t?hh(e.t)+", ":""}${e.ti}</button>`).join(""))}
-function day(k){const es=vis().filter(e=>e.d===k),G={};es.forEach(e=>(G[e.l]=G[e.l]||[]).push(e));show(`<h3>${dl(k)}</h3>`+(es.length?Object.entries(G).map(([l,g])=>g.length===1?`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(g[0])}">${g[0].t?hh(g[0].t)+", ":""}${L[l].f} : ${g[0].ti}</button>`:`<button class="row" style="--c:${L[l].c}" data-g="${k}|${l}">${SP[L[l].sp].e} ${L[l].f}, ${g.length} ${unit(l)}</button>`).join(""):'<p class="meta">Aucun événement ce jour-là.</p>'))}
+function grp(s){const[k,l]=s.split("|"),es=vis().filter(e=>e.d===k&&e.l===l);if(es.length===1)return detail(EV.indexOf(es[0]));show(`<h3>${L[l].f}</h3><p class="meta">${dl(k)}, ${es.length} ${unit(l)}</p>`+es.map(e=>`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(e)}">${e.t?hh(e.t)+", ":""}${e.ti}${shortRes(e)?" <b>"+shortRes(e)+"</b>":""}</button>`).join(""))}
+function day(k){const es=vis().filter(e=>e.d===k),G={};es.forEach(e=>(G[e.l]=G[e.l]||[]).push(e));show(`<h3>${dl(k)}</h3>`+(es.length?Object.entries(G).map(([l,g])=>g.length===1?`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(g[0])}">${g[0].t?hh(g[0].t)+", ":""}${L[l].f} : ${g[0].ti}${shortRes(g[0])?" <b>"+shortRes(g[0])+"</b>":""}</button>`:`<button class="row" style="--c:${L[l].c}" data-g="${k}|${l}">${SP[L[l].sp].e} ${L[l].f}, ${g.length} ${unit(l)}</button>`).join(""):'<p class="meta">Aucun événement ce jour-là.</p>'))}
 document.addEventListener("click",ev=>{
 const t=ev.target;
 if(t===ov||t.closest("[data-x]")){ov.hidden=true;return}
@@ -334,6 +344,7 @@ else if(D.lg){lg=D.lg;tm="all";filters();grid()}
 else if(D.tm){tm=D.tm;filters();grid()}
 else if(D.ev!==undefined)detail(+D.ev);
 else if(D.reveal!==undefined)detail(+D.reveal,true);
+else if(D.acc){const bd=b.nextElementSibling;bd.hidden=!bd.hidden;b.setAttribute("aria-expanded",String(!bd.hidden));bd.hidden?openS.delete(D.acc):openS.add(D.acc);try{localStorage.setItem("mds_open",JSON.stringify([...openS]))}catch(e){}}
 else if(D.day)day(D.day);
 else if(D.go)go(D.go);
 else if(D.g)grp(D.g);
