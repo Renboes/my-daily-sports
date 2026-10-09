@@ -183,7 +183,7 @@ body.clubmode{background:linear-gradient(180deg,color-mix(in srgb,var(--club,#ff
 </div>
 <div id="ov" class="ov" hidden><div id="box" class="dlg" role="dialog" aria-modal="true"></div></div>
 <script>
-const SP={foot:{n:"Football",e:"⚽"},basket:{n:"Basketball",e:"🏀"},moto:{n:"MotoGP",e:"🏍️"},f1:{n:"Formule 1",e:"🏎️"},rugby:{n:"Rugby",e:"🏉"},biathlon:{n:"Biathlon",e:"🎿"},usfoot:{n:"Football américain",e:"🏈"},hockey:{n:"Hockey sur glace",e:"🏒"},mma:{n:"MMA",e:"🥊"}};
+const SP={foot:{n:"Football",e:"⚽"},basket:{n:"Basketball",e:"🏀"},moto:{n:"MotoGP",e:"🏍️"},f1:{n:"Formule 1",e:"🏎️"},rugby:{n:"Rugby",e:"🏉"},biathlon:{n:"Biathlon",e:"🎿"},usfoot:{n:"Football américain",e:"🏈"},hockey:{n:"Hockey sur glace",e:"🏒"},mma:{n:"MMA",e:"🥊"},cyclisme:{n:"Cyclisme",e:"🚴"}};
 const L={
 l1:{n:"Ligue 1",s:"L1",f:"Ligue 1",sp:"foot",c:"#2563eb"},
 l2:{n:"Ligue 2",s:"L2",f:"Ligue 2",sp:"foot",c:"#0d9488"},
@@ -202,6 +202,9 @@ bl:{n:"Bundesliga",s:"BL",f:"Bundesliga",sp:"foot",c:"#a16207"},
 nfl:{n:"NFL",s:"NFL",f:"NFL",sp:"usfoot",c:"#1e40af"},
 nhl:{n:"NHL",s:"NHL",f:"NHL",sp:"hockey",c:"#0891b2"},
 ufc:{n:"UFC",s:"UFC",f:"UFC",sp:"mma",c:"#b91c1c"},
+cgt:{n:"Grands Tours",s:"GT",f:"Grands Tours",sp:"cyclisme",c:"#facc15"},
+ccl:{n:"Grandes classiques",s:"Class.",f:"Grandes classiques",sp:"cyclisme",c:"#10b981"},
+cch:{n:"Championnats du monde et d'Europe",s:"Mondiaux",f:"Championnats",sp:"cyclisme",c:"#8b5cf6"},
 rt14:{n:"Top 14",s:"T14",f:"Top 14",sp:"rugby",c:"#0e7490"},
 rec:{n:"Coupe d'Europe",s:"CE",f:"Coupe d'Europe",sp:"rugby",c:"#4338ca"},
 r6n:{n:"Six Nations",s:"6N",f:"Six Nations",sp:"rugby",c:"#a21caf"},
@@ -210,7 +213,7 @@ rwc:{n:"Coupe du monde de rugby",s:"CM",f:"Coupe du monde",sp:"rugby",c:"#ca8a04
 bwc:{n:"Coupe du monde de biathlon",s:"CM",f:"Coupe du monde",sp:"biathlon",c:"#0284c7"},
 bch:{n:"Championnats du monde de biathlon",s:"Mondial",f:"Championnats du monde",sp:"biathlon",c:"#7c3aed"},
 beu:{n:"Championnats d'Europe de biathlon",s:"Euro",f:"Championnats d'Europe",sp:"biathlon",c:"#0d9488"}};
-["f1","moto","nba","rt14","rec","r6n","rint","rwc","bwc","bch","beu","elite"].forEach(k=>L[k].r=1);
+["f1","moto","nba","rt14","rec","r6n","rint","rwc","bwc","bch","beu","elite","cgt","ccl","cch"].forEach(k=>L[k].r=1);
 const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,"0");
 let EV=[],TM={},ST={};
 let sp="all",lg="all",tm="all";

@@ -202,7 +202,7 @@ async function espn(sport, slug, l, label, win) {
       seen.set(e.id || e.date + nm(h), { d, t, l, ti: nm(h) + " - " + nm(v), de: venue, ...(done && hs != null && hs !== "" && vs != null && vs !== "" ? { sc: hs + "-" + vs, fin: 1 } : {}) });
     }
   }
-  return Object.assign([...seen.values()], { from: dd(start), to: LIGHT || win ? dd(new Date(+end + 864e5)) : "9999-12-31" });
+  return Object.assign([...seen.values()], { from: dd(start), to: LIGHT || win ? dd(new Date(+end + 864e5)) : "9999-12-31", win: !!win });
 }
 
 // ---------- Euroligue : interface publique du site officiel (horaires annoncés en heure d'Europe centrale, comme Paris) ----------
@@ -317,8 +317,7 @@ async function biathlon() {
 
 // ---------- MotoGP : interface publique du site officiel (heures avec décalage, converties en heure de Paris) ----------
 async function motogp() {
-  let asked = 0, read = 0, seen = 0, past = 0, sample = null;
-  const labs = new Set();
+  let asked = 0, read = 0;
   const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && (!OLD.some(e => e.l === "moto" && e.sc) || OLD.some(e => e.l === "moto" && / : (Essais libres|Qualifications)$/.test(e.ti))) ? 100 : BACK) * 864e5)), out = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
   for (const s of arr(await get(base + "seasons")).filter(x => [y, y + 1].includes(+x.year))) {
@@ -335,12 +334,10 @@ async function motogp() {
         const lab = /sprint|\bspr\b/.test(sn) ? "Sprint" : /race|\brac\b/.test(sn) ? "Course" : /warm|\bwup\b/.test(sn) ? "Warm-up" : /qualif|\bq\d?\b/.test(sn) ? "Qualifications" + num
           : /free practice|\bfp\d?\b/.test(sn) ? "Essais libres" + num : /practice|\bpr\b/.test(sn) ? "Practice" : (x.name || x.type);
         const sid = x.id || x.uuid || x.session_id || x.sessionUuid;
-        seen++; labs.add(lab); if (!sample) sample = x;
         const iso = String(x.date), hasTz = /[zZ]|[+-]\d\d:?\d\d$/.test(iso);
         const { d, t } = hasTz ? paris(iso) : { d: iso.slice(0, 10), t: "" };
         let res = null;
         const started = d < today || (d === today && t && t < paris(now.toISOString()).t);
-        if (started) past++;
         if (sid && started && /^(Course|Sprint|Qualifications 2)$/.test(lab) && (!LIGHT || d >= dd(new Date(+now - 4 * 864e5)))) {
           try {
             asked++;
@@ -358,8 +355,7 @@ async function motogp() {
       await sleep(150);
     }
   }
-  console.log("moto : sessions vues", seen, "| passées", past, "| étiquettes :", [...labs].join(" / "), "| classements demandés", asked, "| lus", read);
-  if (sample) console.log("moto : exemple de session :", JSON.stringify(sample).slice(0, 400));
+  if (asked > read) console.log("moto : classements lus", read, "sur", asked);
   return out;
 }
 
@@ -458,7 +454,11 @@ async function main() {
     try {
       let fresh = await fn();
       if (fresh.skip) { console.log(l, "ignoré en mode résultats"); continue; }
-      if (!fresh.length) { if (LIGHT) { console.log(l, "rien de nouveau"); continue; } throw new Error("aucun événement reçu"); }
+      if (!fresh.length) {
+        if (LIGHT) { console.log(l, "rien de nouveau"); continue; }
+        if (fresh.win) { console.log(l, "hors saison : calendrier pas encore publié, rien à mettre à jour"); continue; }
+        throw new Error("aucun événement reçu");
+      }
       const from = fresh.from || fresh.reduce((m, e) => (e.d < m ? e.d : m), "9999-12-31"), to = fresh.to || "9999-12-31";
       fresh = fresh.filter(e => e.d >= from && e.d <= to);
       fresh.forEach(e => { if (!e.sc) { const o = carry.get(key(e)); if (o) { e.sc = o.sc; e.fin = o.fin; } } });
