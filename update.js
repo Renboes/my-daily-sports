@@ -3,6 +3,7 @@
 const fs = require("fs");
 const FILE = process.env.DATA_FILE || "data.json";
 const LIGHT = process.env.MODE === "results";   // mode « résultats » : ne relit que les derniers jours
+let OLD = [];                                      // données déjà enregistrées (pour rattraper les résultats manquants)
 let BACK = 100;                                   // jours passés relus (100 au premier passage, 3 ensuite)
 const dd = d => d.toISOString().slice(0, 10);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -263,7 +264,7 @@ const frRace = s => {
 async function biathlon() {
   const base = "https://biathlonresults.com/modules/sportapi/api/", now = new Date();
   const y = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
-  const season = String(y % 100).padStart(2, "0") + String((y + 1) % 100).padStart(2, "0"), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - BACK * 864e5)), out = [], bad = [];
+  const season = String(y % 100).padStart(2, "0") + String((y + 1) % 100).padStart(2, "0"), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && !OLD.some(e => ["bwc", "bch", "beu"].includes(e.l) && e.sc) ? 100 : BACK) * 864e5)), out = [], bad = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.Events || j.Competitions)) || []);
   for (const level of [0, 1, 2]) {
     let evs = [];
@@ -313,7 +314,7 @@ async function biathlon() {
 
 // ---------- MotoGP : interface publique du site officiel (heures avec décalage, converties en heure de Paris) ----------
 async function motogp() {
-  const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - BACK * 864e5)), out = [];
+  const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && !OLD.some(e => e.l === "moto" && e.sc) ? 100 : BACK) * 864e5)), out = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
   for (const s of arr(await get(base + "seasons")).filter(x => [y, y + 1].includes(+x.year))) {
     for (const e of arr(await get(`${base}events?seasonUuid=${s.id}`))) {
@@ -334,8 +335,9 @@ async function motogp() {
         const started = d < today || (d === today && t && t < paris(now.toISOString()).t);
         if (x.id && started && /^(Course|Sprint|Qualifications 2)$/.test(lab) && (!LIGHT || d >= dd(new Date(+now - 4 * 864e5)))) {
           try {
-            const cj = await get(`${base}session/${x.id}/classification?test=false`), rows = (Array.isArray(cj) ? cj : cj.classification || cj.data || []).slice(0, 3);
-            const nmr = r => (r.rider && (r.rider.surname || r.rider.full_name)) || r.name || "?";
+            const cj = await get(`${base}session/${x.id}/classification?seasonYear=${s.year}&test=false`), rows = (Array.isArray(cj) ? cj : cj.classification || cj.data || []).slice(0, 3);
+            const tc = w => (w.length > 3 && w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w);
+            const nmr = r => { const ri = r.rider || {}, fn = String(ri.full_name || r.name || ""), m = fn.match(/(?:^|\s)([A-ZÀ-ÝÑ'’-]{2,}(?:\s+[A-ZÀ-ÝÑ'’-]{2,})*)$/); return ri.surname ? tc(ri.surname) : m ? m[1].split(/\s+/).map(tc).join(" ") : fn.split(" ").slice(-1)[0] || "?"; };
             if (rows.length === 3) res = (lab === "Qualifications 2" ? "Pole : " : "1. ") + nmr(rows[0]) + " · 2. " + nmr(rows[1]) + " · 3. " + nmr(rows[2]);
           } catch (e) {}
           await sleep(120);
@@ -350,6 +352,7 @@ async function motogp() {
 
 async function main() {
   const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
+  OLD = data.events;
   BACK = LIGHT || data.backfilled ? 3 : 100;
   console.log("Mode :", LIGHT ? "résultats récents" : "calendriers complets", "| jours passés relus :", BACK);
   let events = data.events, fails = 0;
