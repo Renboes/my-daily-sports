@@ -2,12 +2,25 @@ name: Mise à jour des calendriers
 on:
   schedule:
     - cron: "0 4 * * *"
+    - cron: "30 */3 * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = calendriers complets, results = seulement les résultats récents"
+        default: "full"
+        type: choice
+        options:
+          - full
+          - results
 permissions:
   contents: write
+concurrency:
+  group: mise-a-jour
+  cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,9 +29,13 @@ jobs:
       - run: node update.js
         env:
           BALLDONTLIE_KEY: ${{ secrets.BALLDONTLIE_KEY }}
+          MODE: ${{ github.event.inputs.mode || (github.event.schedule == '30 */3 * * *' && 'results' || 'full') }}
       - name: Enregistrer les changements
         run: |
           git config user.name "calendrier-bot"
           git config user.email "bot@users.noreply.github.com"
           git add data.json
-          git diff --cached --quiet || (git commit -m "Mise à jour des calendriers" && git push)
+          git diff --cached --quiet && exit 0
+          git commit -m "Mise à jour des calendriers"
+          git pull --rebase origin main
+          git push
