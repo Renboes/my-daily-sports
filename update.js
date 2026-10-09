@@ -319,7 +319,7 @@ async function biathlon() {
 async function motogp() {
   let asked = 0, read = 0, seen = 0, past = 0, sample = null;
   const labs = new Set();
-  const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && !OLD.some(e => e.l === "moto" && e.sc) ? 100 : BACK) * 864e5)), out = [];
+  const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && (!OLD.some(e => e.l === "moto" && e.sc) || OLD.some(e => e.l === "moto" && / : (Essais libres|Qualifications)$/.test(e.ti))) ? 100 : BACK) * 864e5)), out = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
   for (const s of arr(await get(base + "seasons")).filter(x => [y, y + 1].includes(+x.year))) {
     for (const e of arr(await get(`${base}events?seasonUuid=${s.id}`))) {
@@ -331,7 +331,7 @@ async function motogp() {
       const place = gp(e.name || (e.country && e.country.name) || "");
       for (const x of arr(await get(`${base}sessions?eventUuid=${e.id}&categoryUuid=${cat.id}`))) {
         if (!x.date) continue;
-        const sn = (String(x.name || "") + " " + String(x.type || "") + " " + String(x.short_name || x.shortName || "")).toLowerCase(), no = (sn.match(/(\d)/) || [])[1], num = no ? " " + no : "";
+        const sn = (String(x.name || "") + " " + String(x.type || "") + " " + String(x.short_name || x.shortName || "")).toLowerCase(), no = (sn.match(/(\d)/) || [])[1] || (x.number != null ? String(x.number) : ""), num = no ? " " + no : "";
         const lab = /sprint|\bspr\b/.test(sn) ? "Sprint" : /race|\brac\b/.test(sn) ? "Course" : /warm|\bwup\b/.test(sn) ? "Warm-up" : /qualif|\bq\d?\b/.test(sn) ? "Qualifications" + num
           : /free practice|\bfp\d?\b/.test(sn) ? "Essais libres" + num : /practice|\bpr\b/.test(sn) ? "Practice" : (x.name || x.type);
         const sid = x.id || x.uuid || x.session_id || x.sessionUuid;
