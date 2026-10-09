@@ -317,7 +317,8 @@ async function biathlon() {
 
 // ---------- MotoGP : interface publique du site officiel (heures avec décalage, converties en heure de Paris) ----------
 async function motogp() {
-  let asked = 0, read = 0;
+  let asked = 0, read = 0, seen = 0, past = 0, sample = null;
+  const labs = new Set();
   const base = "https://api.motogp.pulselive.com/motogp/v1/results/", now = new Date(), y = now.getUTCFullYear(), today = now.toISOString().slice(0, 10), since = dd(new Date(+now - (!LIGHT && !OLD.some(e => e.l === "moto" && e.sc) ? 100 : BACK) * 864e5)), out = [];
   const arr = j => (Array.isArray(j) ? j : (j && (j.data || j.results || j.items)) || []);
   for (const s of arr(await get(base + "seasons")).filter(x => [y, y + 1].includes(+x.year))) {
@@ -330,17 +331,20 @@ async function motogp() {
       const place = gp(e.name || (e.country && e.country.name) || "");
       for (const x of arr(await get(`${base}sessions?eventUuid=${e.id}&categoryUuid=${cat.id}`))) {
         if (!x.date) continue;
-        const sn = String(x.name || x.type || "").toLowerCase(), no = (sn.match(/(\d)/) || [])[1], num = no ? " " + no : "";
-        const lab = /sprint/.test(sn) ? "Sprint" : /race/.test(sn) ? "Course" : /warm/.test(sn) ? "Warm-up" : /qualif|^q\d/.test(sn) ? "Qualifications" + num
-          : /free practice|^fp/.test(sn) ? "Essais libres" + num : /practice|^pr/.test(sn) ? "Practice" : (x.name || x.type);
+        const sn = (String(x.name || "") + " " + String(x.type || "") + " " + String(x.short_name || x.shortName || "")).toLowerCase(), no = (sn.match(/(\d)/) || [])[1], num = no ? " " + no : "";
+        const lab = /sprint|\bspr\b/.test(sn) ? "Sprint" : /race|\brac\b/.test(sn) ? "Course" : /warm|\bwup\b/.test(sn) ? "Warm-up" : /qualif|\bq\d?\b/.test(sn) ? "Qualifications" + num
+          : /free practice|\bfp\d?\b/.test(sn) ? "Essais libres" + num : /practice|\bpr\b/.test(sn) ? "Practice" : (x.name || x.type);
+        const sid = x.id || x.uuid || x.session_id || x.sessionUuid;
+        seen++; labs.add(lab); if (!sample) sample = x;
         const iso = String(x.date), hasTz = /[zZ]|[+-]\d\d:?\d\d$/.test(iso);
         const { d, t } = hasTz ? paris(iso) : { d: iso.slice(0, 10), t: "" };
         let res = null;
         const started = d < today || (d === today && t && t < paris(now.toISOString()).t);
-        if (x.id && started && /^(Course|Sprint|Qualifications 2)$/.test(lab) && (!LIGHT || d >= dd(new Date(+now - 4 * 864e5)))) {
+        if (started) past++;
+        if (sid && started && /^(Course|Sprint|Qualifications 2)$/.test(lab) && (!LIGHT || d >= dd(new Date(+now - 4 * 864e5)))) {
           try {
             asked++;
-            const cj = await get(`${base}session/${x.id}/classification?seasonYear=${s.year}&test=false`), rows = (Array.isArray(cj) ? cj : cj.classification || cj.data || []).slice(0, 3);
+            const cj = await get(`${base}session/${sid}/classification?seasonYear=${s.year}&test=false`), rows = (Array.isArray(cj) ? cj : cj.classification || cj.data || []).slice(0, 3);
             if (rows.length < 3) warn1("moto", "réponse inattendue : " + JSON.stringify(cj).slice(0, 300));
             const tc = w => (w.length > 3 && w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w);
             const nmr = r => { const ri = r.rider || {}, fn = String(ri.full_name || r.name || ""), m = fn.match(/(?:^|\s)([A-ZÀ-ÝÑ'’-]{2,}(?:\s+[A-ZÀ-ÝÑ'’-]{2,})*)$/); return ri.surname ? tc(ri.surname) : m ? m[1].split(/\s+/).map(tc).join(" ") : fn.split(" ").slice(-1)[0] || "?"; };
@@ -354,7 +358,8 @@ async function motogp() {
       await sleep(150);
     }
   }
-  console.log("moto : classements demandés", asked, "| lus", read);
+  console.log("moto : sessions vues", seen, "| passées", past, "| étiquettes :", [...labs].join(" / "), "| classements demandés", asked, "| lus", read);
+  if (sample) console.log("moto : exemple de session :", JSON.stringify(sample).slice(0, 400));
   return out;
 }
 
