@@ -20,7 +20,8 @@ export async function onRequestGet({ request }) {
   const seen = new Map();
   await Promise.all(ls.flatMap(l => days.map(async d => {
     try {
-      const r = await fetch(https://site.api.espn.com/apis/site/v2/sports/${MAP[l][0]}/${MAP[l][1]}/scoreboard?dates=${d}, { cf: { cacheTtl: 15, cacheEverything: true } });
+      const u = "https://site.api.espn.com/apis/site/v2/sports/" + MAP[l][0] + "/" + MAP[l][1] + "/scoreboard?dates=" + d;
+      const r = await fetch(u, { cf: { cacheTtl: 15, cacheEverything: true } });
       if (!r.ok) return;
       const j = await r.json();
       for (const e of j.events || []) {
