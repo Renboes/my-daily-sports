@@ -4,10 +4,134 @@
    "id": "paul-seixas",
    "name": "Paul Seixas",
    "sport": "cyclisme",
-   "team": "",
-   "info": "Cyclisme sur route",
+   "team": "Decathlon CMA CGM",
+   "info": "20 ans, né à Lyon · grimpeur, puncheur et rouleur",
+   "nextNote": "Fin de saison 2026 : le programme 2027 n'est pas encore annoncé (il reste chez Decathlon CMA CGM, contrat jusqu'à fin 2027).",
    "next": [],
-   "results": []
+   "results": [
+    {
+     "d": "2026-10-10",
+     "race": "Tour de Lombardie",
+     "res": "1er",
+     "de": "Course d'un jour (Monument), plus jeune vainqueur de l'histoire"
+    },
+    {
+     "d": "2026-09-27",
+     "race": "Championnats du monde – course en ligne (Montréal)",
+     "res": "15e",
+     "de": "Course d'un jour"
+    },
+    {
+     "d": "2026-09-20",
+     "race": "Championnats du monde – contre-la-montre (Montréal)",
+     "res": "3e",
+     "de": "Contre-la-montre individuel, médaille de bronze"
+    },
+    {
+     "d": "2026-09-13",
+     "race": "Grand Prix cycliste de Montréal",
+     "res": "2e",
+     "de": "Course d'un jour"
+    },
+    {
+     "d": "2026-09-11",
+     "race": "Grand Prix cycliste de Québec",
+     "res": "17e",
+     "de": "Course d'un jour"
+    },
+    {
+     "d": "2026-07-26",
+     "race": "Tour de France",
+     "res": "4e",
+     "de": "Classement général final (2e du classement du meilleur jeune)"
+    },
+    {
+     "d": "2026-06-14",
+     "race": "Tour Auvergne-Rhône-Alpes",
+     "res": "abandon",
+     "de": "Étape 8 (dernière étape), blessé après une chute la veille, 6e du général avant l'abandon"
+    },
+    {
+     "d": "2026-04-26",
+     "race": "Liège-Bastogne-Liège",
+     "res": "2e",
+     "de": "Course d'un jour (Monument)"
+    },
+    {
+     "d": "2026-04-22",
+     "race": "Flèche Wallonne",
+     "res": "1er",
+     "de": "Course d'un jour"
+    },
+    {
+     "d": "2026-04-11",
+     "race": "Tour du Pays basque",
+     "res": "1er",
+     "de": "Classement général final (plus maillots points, montagne et jeune)"
+    },
+    {
+     "d": "2026-04-10",
+     "race": "Tour du Pays basque",
+     "res": "1er",
+     "de": "Étape 5"
+    },
+    {
+     "d": "2026-04-09",
+     "race": "Tour du Pays basque",
+     "res": "8e",
+     "de": "Étape 4"
+    },
+    {
+     "d": "2026-04-07",
+     "race": "Tour du Pays basque",
+     "res": "1er",
+     "de": "Étape 2"
+    },
+    {
+     "d": "2026-04-06",
+     "race": "Tour du Pays basque",
+     "res": "1er",
+     "de": "Étape 1 (contre-la-montre)"
+    },
+    {
+     "d": "2026-03-07",
+     "race": "Strade Bianche",
+     "res": "2e",
+     "de": "Course d'un jour"
+    },
+    {
+     "d": "2026-02-28",
+     "race": "Faun-Ardèche Classic",
+     "res": "1er",
+     "de": "Course d'un jour"
+    },
+    {
+     "d": "2026-02-22",
+     "race": "Volta ao Algarve",
+     "res": "2e",
+     "de": "Classement général final (meilleur jeune)"
+    },
+    {
+     "d": "2026-02-22",
+     "race": "Volta ao Algarve",
+     "res": "3e",
+     "de": "Étape 5"
+    },
+    {
+     "d": "2026-02-20",
+     "race": "Volta ao Algarve",
+     "res": "4e",
+     "de": "Étape 3"
+    },
+    {
+     "d": "2026-02-19",
+     "race": "Volta ao Algarve",
+     "res": "1er",
+     "de": "Étape 2"
+    }
+   ],
+   "wiki": "Paul_Seixas",
+   "lang": "en"
   }
  ]
 }

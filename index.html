@@ -71,6 +71,8 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 .cfg{display:block;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;font:600 17px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 6px}
 [hidden]{display:none!important}
 .ev.done{opacity:.5}
+.aphoto{display:block;width:210px;height:210px;border-radius:50%;object-fit:cover;object-position:center 15%;margin:12px auto 12px;border:4px solid var(--club,#ff5a00);box-shadow:0 10px 30px rgba(0,0,0,.5);background:var(--card)}
+#aphc a{color:inherit}
 #msp,#ath{text-align:center}
 #msp .topbar,#msp .sec,#msp .row,#msp .gh,#msp .tw,#msp .empty,#msp .cfg,#ath .topbar,#ath .sec,#ath .row,#ath .empty{text-align:left}
 .ev.live{position:relative}
@@ -421,6 +423,7 @@ if(rs.length)x+='<h2 class="sec">✅ Derniers résultats</h2>'+rs.map(rrow).join
 x+='<button class="cfg" id="mrcp">Tous les résultats et le classement complet</button>';
 $("#mbody").innerHTML=x;
 }
+let aAll=false;
 let atK=(()=>{try{return localStorage.getItem("mds_ath")}catch(e){return null}})();
 function athFind(k){
 if(!k)return null;
@@ -429,6 +432,17 @@ const c=AT.find(a=>a.id===k);return c?{name:c.name,sport:c.sport,l:null,cur:c}:n
 function athPool(){const o=[];for(const l of["f1","moto"])for(const g of ST[l]||[])if(/Pilote/.test(g.name))g.rows.forEach(r=>o.push([r.t,l]));return o}
 function athChoose(){show('<h3>Choisir un athlète</h3>'+(AT.length?'<div class="chips">'+AT.map(a=>`<button class="chip" data-at="${a.id}">${a.name}</button>`).join("")+'</div>':"")+'<p class="meta">Pilotes de F1 et de MotoGP : tape un nom.</p><input id="aq" placeholder="Marquez, Verstappen…" autocomplete="off" style="width:100%;padding:9px 12px;margin:6px 0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><div id="ares" class="chips"></div>')}
 function ares(){const q=$("#aq").value.trim().toLowerCase();$("#ares").innerHTML=q.length<2?"":(athPool().filter(([n])=>n.toLowerCase().includes(q)).slice(0,10).map(([n,l])=>`<button class="chip sm" data-at="s|${n}|${l}">${n} (${L[l].f})</button>`).join("")||'<span class="meta">Aucun pilote trouvé.</span>')}
+const PH={};let phCur="";
+function paintPhoto(key,p){if(phCur!==key||!p||!$("#aph"))return;const big=p.src.replace(/\/\d+px-/,"/500px-");$("#aph").innerHTML=`<img class="aphoto" alt="" src="${big}" onerror="this.onerror=null;this.src='${p.src}'">`;$("#aphc").innerHTML=`${p.credit||"Photo : Wikipédia / Wikimedia Commons (licence libre)"}${p.page?` · <a href="${p.page}" target="_blank" rel="noopener">source</a>`:""}`}
+async function athPhoto(a){
+const title=(a.cur&&(a.cur.wiki||a.cur.photo&&a.cur.id))||(a.l?a.name.replace(/ /g,"_"):null);if(!title)return;
+const lang=(a.cur&&a.cur.lang)||"fr",key=lang+"|"+title;phCur=key;
+if(a.cur&&a.cur.photo)return paintPhoto(key,{src:a.cur.photo,page:a.cur.photoPage,credit:a.cur.photoCredit||"Photo"});
+if(key in PH)return paintPhoto(key,PH[key]);
+try{const r=await fetch("https://"+lang+".wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(title));if(!r.ok)throw 0;const j=await r.json();
+const sure=a.cur||(j.type==="standard"&&/pilote|motocycl|automobile|formule|racing driver|motorcycle|rider|Formula/i.test((j.description||"")+" "+(j.extract||"").slice(0,200)));
+PH[key]=sure&&j.thumbnail?{src:j.thumbnail.source,page:j.content_urls&&j.content_urls.desktop&&j.content_urls.desktop.page}:null}catch(e){PH[key]=null}
+paintPhoto(key,PH[key])}
 function athPage(){
 const a=athFind(atK);
 if(!a){document.documentElement.style.setProperty("--club","#ff5a00");$("#ahead").innerHTML="";$("#abody").innerHTML='<h2 class="cname" style="text-align:center">My Athlete</h2><p class="empty" style="text-align:center">Choisis l\'athlète que tu veux suivre.</p><button class="cfg" id="achg2">Choisir un athlète</button>';return}
@@ -437,7 +451,7 @@ const col=a.l?L[a.l].c:((Object.values(L).find(l=>l.sp===a.sport))||{c:"#ff5a00"
 document.documentElement.style.setProperty("--club",col);
 const ini=a.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase(),cu=a.cur||{};
 const sub=[SP[a.sport]?SP[a.sport].n:"",cu.team||a.sub||"",cu.info||""].filter(Boolean).join(" · ");
-$("#ahead").innerHTML=`<div class="cbadge" style="color:#0e0e10">${ini}</div><h2 class="cname">${a.name}</h2><p class="meta">${sub}</p>`+(a.rank?`<span class="rank">🏆 ${ordn(a.rank)} · ${L[a.l].f}${a.pts!=null?" · "+a.pts+" pts":""}</span>`:"");
+$("#ahead").innerHTML=`<div id="aph"><div class="cbadge" style="color:#0e0e10">${ini}</div></div><h2 class="cname">${a.name}</h2><p class="meta">${sub}</p>`+(a.rank?`<span class="rank">🏆 ${ordn(a.rank)} · ${L[a.l].f}${a.pts!=null?" · "+a.pts+" pts":""}</span>`:"");
 let nx=(cu.next||[]).filter(x=>x.d>=k).map(x=>({d:x.d,t:x.race,de:x.de||""}));
 if(a.l)nx=nx.concat(EV.filter(e=>e.l===a.l&&(e.d>k||(e.d===k&&(!e.t||e.t>=hm)))&&/Course|Sprint|Qualifications/.test(e.ti)).slice(0,6).map(e=>({d:e.d,t:e.ti,de:"",ev:EV.indexOf(e),c:L[e.l].c})));
 nx.sort((p,q)=>p.d.localeCompare(q.d));
@@ -446,11 +460,12 @@ const dup=a.l&&athPool().some(([n,l])=>l===a.l&&n!==a.name&&n.split(" ").slice(-
 for(const e of EV){if(!a.l||dup||!e.fin||!e.sc||e.sc.toLowerCase().indexOf(last)<0)continue;const part=e.sc.split(" · ").find(s=>s.toLowerCase().indexOf(last)>=0)||"",m=part.match(/^(\d+)\./);rs.push({d:e.d,t:e.ti,r:m?ordn(+m[1]):"podium",ev:EV.indexOf(e),c:L[e.l].c})}
 rs.sort((p,q)=>q.d.localeCompare(p.d));
 const row=(x,res)=>`<button class="row" style="--c:${x.c||col}"${x.ev!=null?` data-ev="${x.ev}"`:""}><b>${sd(x.d)}</b> ${x.t}${res?(spoil?' <span class="meta">(résultat masqué)</span>':" · <b>"+x.r+"</b>"):""}${x.de?` <span class="meta">${x.de}</span>`:""}</button>`;
-let x='<h2 class="sec">📅 Prochaines courses</h2>'+(nx.length?nx.slice(0,8).map(y=>row(y,false)).join(""):'<p class="empty">Aucune course enregistrée pour l\'instant.</p>');
-x+='<h2 class="sec">✅ Derniers résultats</h2>'+(rs.length?rs.slice(0,10).map(y=>row(y,true)).join(""):'<p class="empty">Aucun résultat enregistré pour l\'instant.</p>');
+let x='<h2 class="sec">📅 Prochaines courses</h2>'+(nx.length?nx.slice(0,8).map(y=>row(y,false)).join(""):'<p class="empty">'+(cu.nextNote||"Aucune course enregistrée pour l\'instant.")+'</p>');
+x+='<h2 class="sec">✅ Derniers résultats</h2>'+(rs.length?rs.slice(0,aAll?300:10).map(y=>row(y,true)).join("")+(!aAll&&rs.length>10?'<button class="cfg" id="aall">Voir tous les résultats de la saison ('+rs.length+')</button>':""):'<p class="empty">Aucun résultat enregistré pour l\'instant.</p>');
 if(dup)x+='<p class="meta" style="text-align:center">Deux pilotes portent ce nom de famille : les podiums ne sont pas attribués automatiquement.</p>';
 if(!a.l&&!(cu.next||[]).length&&!(cu.results||[]).length)x+='<p class="meta" style="text-align:center">Les courses et résultats de cet athlète se renseignent à la main (avec Cowork) et se mettront à jour au fil de la saison.</p>';
-$("#abody").innerHTML=x;
+$("#abody").innerHTML=x+'<p class="meta" id="aphc" style="text-align:center;font-size:13px"></p>';
+athPhoto(a);
 }
 function refresh(){
 if(sp!=="all"&&!Object.entries(L).some(([k,l])=>l.sp===sp&&!hid.has(k)))sp="all";
@@ -497,8 +512,9 @@ else if(D.lg){lg=D.lg;tm="all";filters();grid()}
 else if(D.tm){tm=D.tm;filters();grid()}
 else if(D.ev!==undefined)detail(+D.ev);
 else if(D.reveal!==undefined){revS.add(+D.reveal);detail(+D.reveal,true)}
-else if(D.at){atK=D.at;try{localStorage.setItem("mds_ath",atK)}catch(e){}ov.hidden=true;athPage()}
+else if(D.at){aAll=false;atK=D.at;try{localStorage.setItem("mds_ath",atK)}catch(e){}ov.hidden=true;athPage()}
 else if(b.id==="achg"||b.id==="achg2")athChoose();
+else if(b.id==="aall"){aAll=true;athPage()}
 else if(D.ms){msL=D.ms;mAll=false;mMore=false;try{localStorage.setItem("mds_msp",msL)}catch(e){}ov.hidden=true;mspPage()}
 else if(b.id==="mchg")show("<h3>Changer de sport</h3>"+mchoose());
 else if(b.id==="mall"){mAll=true;mspPage()}
