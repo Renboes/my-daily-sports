@@ -1,0 +1,13 @@
+{
+ "athletes": [
+  {
+   "id": "paul-seixas",
+   "name": "Paul Seixas",
+   "sport": "cyclisme",
+   "team": "",
+   "info": "Cyclisme sur route",
+   "next": [],
+   "results": []
+  }
+ ]
+}
