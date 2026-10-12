@@ -71,6 +71,9 @@ input[type=checkbox]{width:19px;height:19px;accent-color:#2f7a3c}
 .cfg{display:block;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;font:600 17px "Barlow Condensed","Arial Narrow",system-ui,sans-serif;cursor:pointer;margin:0 0 6px}
 [hidden]{display:none!important}
 .ev.done{opacity:.5}
+.ev.live{position:relative}
+.ev.live::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#ef4444;animation:bl 1.2s infinite}
+@keyframes bl{50%{opacity:.25}}
 .tw{overflow-x:auto}
 .cls{width:100%;border-collapse:collapse;font-size:16px;margin:4px 0 14px}
 .cls th{color:var(--mut);font-weight:600;text-align:right;padding:4px 6px}
@@ -139,6 +142,7 @@ body.clubmode{background:linear-gradient(180deg,color-mix(in srgb,var(--club,#ff
 <button class="club" data-go="club">🛡️ My Club</button>
 <button class="club" data-go="rcp">📊 Résultats et classement</button>
 <button class="cfg" id="cfg">⚙️ Mes compétitions et mes favoris</button>
+<div id="lv"></div>
 <div id="tl"></div>
 <div id="fv"></div>
 <div id="rs"></div>
@@ -238,7 +242,7 @@ $("#leagues").innerHTML=ls.length>1?[["all","Toutes les ligues"],...ls.map(([k,v
 const ts=fav||lg==="all"?[]:[...new Set(EV.filter(e=>e.l===lg).flatMap(teams))].sort((a,b)=>a.localeCompare(b,"fr"));
 $("#teams").innerHTML=ts.length?[["all","Toutes les équipes"],...ts.map(x=>[x,x])].map(([k,n])=>`<button class="chip" aria-pressed="${tm===k}" data-tm="${k}">${n}</button>`).join(""):"";
 }
-const chip=(k,es)=>{const e=es[0],l=L[e.l];return `<button class="ev${es.every(over)?" done":""}" style="--c:${l.c}" data-g="${k}|${e.l}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
+const chip=(k,es)=>{const e=es[0],l=L[e.l];return `<button class="ev${es.every(over)?" done":""}${es.some(x=>x.live)?" live":""}" style="--c:${l.c}" data-g="${k}|${e.l}"><span>${SP[l.sp].e}</span><span class="s">${l.s}</span><span class="f">${l.f}</span></button>`};
 const unit=l=>/^(foot|basket|rugby|usfoot|hockey)$/.test(L[l].sp)?"matchs":L[l].sp==="mma"?"événements":"sessions";
 function grid(){
 const{y,m}=cur,map={};
@@ -268,8 +272,10 @@ const lastRes=a=>a.filter(e=>e.fin&&e.sc).sort((x,y)=>(y.d+y.t).localeCompare(x.
 const openS=new Set(lsg("mds_open"));
 const accS=(id,t,n,body)=>{const o=openS.has(id);return `<button class="acc" data-acc="${id}" aria-expanded="${o}">${t}<span class="cnt${n?"":" z"}">${n}</span><span class="chev">▾</span></button><div class="accb"${o?"":" hidden"}>${body}</div>`};
 const shortRes=e=>{if(!e.fin||!e.sc||spoil)return "";const p=pscore(e);return p?p.h+"–"+p.a:e.sc.split(" · ")[0]};
-const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${isFav(e)?"⭐ ":""}${SP[l.sp].e} ${l.f} : ${e.ti}</button>`};
-const hero=(e,k,f,lab)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">${lab||(f?"Prochain parmi mes favoris":"Prochain rendez-vous")}</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${w}${e.t?", "+hh(e.t):""}</span><span class="ht">${e.ti}</span><span class="hl">${l.f}</span></span></button>`};
+const lvT=e=>{const p=e.ti.split(" - ");return p[0]+" <b>"+e.live.hs+"–"+e.live.as+"</b> "+p.slice(1).join(" - ")};
+const revS=new Set();
+const rw=(e,full)=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${full?sd(e.d)+(e.t?" "+hh(e.t):""):(e.t?hh(e.t):"Journée")}</b> ${isFav(e)?"⭐ ":""}${SP[l.sp].e} ${l.f} : ${e.ti}${e.live&&!spoil?` <b>🔴 ${e.live.hs}–${e.live.as}</b>`:""}</button>`};
+const hero=(e,k,f,lab)=>{const l=L[e.l],dd=Math.round((new Date(e.d)-new Date(k))/864e5),w=dd===0?"Aujourd'hui":dd===1?"Demain":"Dans "+dd+" jours";return `<div class="hk0">${lab||(f?"Prochain parmi mes favoris":"Prochain rendez-vous")}</div><button class="hero" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><span class="he">${SP[l.sp].e}</span><span class="hb"><span class="hk">${e.live?"🔴 En direct"+(e.live.c?" · "+e.live.c:""):w+(e.t?", "+hh(e.t):"")}</span><span class="ht">${e.live&&!spoil?lvT(e):e.ti}</span><span class="hl">${l.f}</span></span></button>`};
 function home(){
 const h=now.getHours(),g=h>=18||h<5?"Bonsoir":h<12?"Bonjour":"Bon après-midi",k=tk(),hm=pad(h)+":"+pad(now.getMinutes());
 $("#today").textContent=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
@@ -278,6 +284,8 @@ const td=vs.filter(e=>e.d===k),nx=vs.filter(e=>e.d>k),uf=up(fv)[0],hh1=uf||up(vs
 $("#hello").textContent=g+" ! "+(td.length?(td.length===1?"Un rendez-vous sportif aujourd'hui.":td.length+" rendez-vous sportifs aujourd'hui."):"Pas de sport aujourd'hui, voici la suite.");
 $("#hero").innerHTML=hh1?hero(hh1,k,!!uf):"";
 $("#tl").innerHTML=accS("tl","Au programme aujourd'hui",td.length,td.length?td.map(e=>rw(e)).join(""):"<p class=\"empty\">Rien au programme aujourd'hui. Profites-en pour souffler !</p>");
+const lvE=vs.filter(e=>e.live);
+$("#lv").innerHTML=lvE.length?'<h2 class="sec">🔴 En direct</h2>'+lvE.map(e=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${e.live.c||"En cours"}</b> ${SP[l.sp].e} ${spoil?e.ti:lvT(e)}</button>`}).join(""):"";
 const rs=lastRes(hasFav()?vs.filter(isFav):vs).slice(0,6);
 $("#rs").innerHTML=rs.length?accS("rs","Derniers résultats",rs.length,rs.map(rrow).join("")):"";
 const fl6=up(fv).slice(0,6);
@@ -301,13 +309,13 @@ const rk=[];
 if(c.includes("|"))for(const l of new Set(mine.map(e=>e.l)))for(const g of (ST[l]||[])){const i=g.rows.findIndex(r=>r.t===cn);if(i>=0){const r=g.rows[i],n=r.r||i+1;rk.push(`${ordn(n)} · ${L[l].f}${(ST[l]||[]).length>1?" ("+g.name+")":""}${r.pts!=null?" · "+r.pts+" pts":""}`)}}
 $("#crank").innerHTML=rk.map(x=>`<span class="rank">🏆 ${x}</span>`).join("");
 $("#csub").textContent=mine.length?"Compétitions : "+[...new Set(mine.map(e=>L[e.l].f))].join(", "):"Aucun match trouvé pour l'instant.";
-const f=up[0],opp=e=>teams(e).find(t=>t!==cn),dom=e=>e.ti.startsWith(cn+" - ");
+const lvC=mine.find(e=>e.live),f=lvC||up[0],opp=e=>teams(e).find(t=>t!==cn),dom=e=>e.ti.startsWith(cn+" - ");
 const m=TM[c]||TM[cn]||{},col=clubColor(cn,m,mine),ini=(cn.split(/[\s-]+/).filter(w=>!/^(fc|as|sc|us|ac|rc|ssc|og|ogc|cf)$/i.test(w)).slice(0,2).map(w=>w[0]).join("")||cn[0]).toUpperCase();
 document.documentElement.style.setProperty("--club",col);
 const badge=`<div class="cbadge"${m.logo?" hidden":""} style="color:${lum(col)>.35?"#0e0e10":"#fff"}">${ini}</div>`;
 $("#clogo").innerHTML=(m.logo?`<img class="clogo" src="${m.logo}" alt="${cn}" onerror="this.style.display='none';this.nextElementSibling.hidden=false">`:"")+badge;
-$("#chero").innerHTML=f?hero(f,k,false,"Prochain match · "+(dom(f)?"à domicile":"à l'extérieur")):"";
-const rest=up.slice(f?1:0),shown=cAll?rest:rest.slice(0,12);
+$("#chero").innerHTML=f?hero(f,k,false,(f.live?"Match en cours":"Prochain match")+" · "+(dom(f)?"à domicile":"à l'extérieur")):"";
+const rest=up.slice(f&&f===up[0]?1:0),shown=cAll?rest:rest.slice(0,12);
 $("#clist").innerHTML=shown.length?shown.map(e=>{const l=L[e.l];return `<button class="row" style="--c:${l.c}" data-ev="${EV.indexOf(e)}"><b>${sd(e.d)}${e.t?" "+hh(e.t):""}</b> ${SP[l.sp].e} ${dom(e)?"reçoit":"se déplace à"} ${opp(e)} <span class="meta">(${l.f})</span></button>`}).join(""):(f?"":'<p class="empty">Aucun rendez-vous à venir.</p>');
 $("#cmore").hidden=cAll||rest.length<=12;
 const past=lastRes(mine).slice(0,8);
@@ -361,6 +369,24 @@ $("#rleague").innerHTML=ls.length>1?ls.map(([k,l])=>`<button class="chip" aria-p
 $("#rtabs").innerHTML=rL?[["res","Résultats"],["cls","Classement"]].map(([k,n])=>`<button class="chip" aria-pressed="${rT===k}" data-rt="${k}">${n}</button>`).join(""):"";
 $("#rbody").innerHTML=!rS?'<p class="empty">Choisis un sport, puis un championnat.</p>':!rL?'<p class="empty">Choisis un championnat.</p>':rT==="cls"?clsTable(rL):resList(rL);
 }
+const LIVEL=new Set(["l1","l2","ldn","ucl","uel","pl","liga","sa","bl","rt14","rec","r6n","nba","nfl","nhl"]);
+let LV={},lvTm=0;
+const lvS=ms=>{clearTimeout(lvTm);lvTm=setTimeout(liveTick,ms)};
+function refreshLive(){
+for(const e of EV){if(!LIVEL.has(e.l))continue;const x=LV[e.l+"|"+e.ti];
+if(x&&Math.abs(Date.parse(x.d)-Date.parse(e.d+"T"+(e.t||"12:00")+":00+02:00"))<30*36e5){if(x.s==="in")e.live={hs:x.hs,as:x.as,c:x.c};else{delete e.live;e.sc=x.hs+"-"+x.as;e.fin=1}}else if(e.live)delete e.live}
+home();if(!$("#cal").hidden)grid();if(!$("#club").hidden)clubPage();if(!$("#rcp").hidden)rcpPage();
+if(!ov.hidden&&box.dataset.i)detail(+box.dataset.i)
+}
+async function liveTick(){
+if(document.hidden||!EV.length)return lvS(60000);
+const now=Date.now(),cand=EV.filter(e=>LIVEL.has(e.l)&&e.t&&now>Date.parse(e.d+"T"+e.t+":00")-20*6e4&&now<Date.parse(e.d+"T"+e.t+":00")+270*6e4);
+if(!cand.length){if(EV.some(e=>e.live)){LV={};refreshLive()}return lvS(60000)}
+try{const r=await fetch("/api/live?l="+[...new Set(cand.map(e=>e.l))].slice(0,10).join(","),{cache:"no-store"});
+if(r.ok){const j=await r.json();LV={};(j.ev||[]).forEach(x=>{LV[x.l+"|"+x.h+" - "+x.a]=x});refreshLive()}}catch(e){}
+lvS(30000)
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)liveTick()});
 function refresh(){
 if(sp!=="all"&&!Object.entries(L).some(([k,l])=>l.sp===sp&&!hid.has(k)))sp="all";
 if(lg!=="all"&&hid.has(lg))lg="all";
@@ -381,15 +407,17 @@ show(x);tfav();
 }
 function go(v){$("#home").hidden=v!=="home";$("#cal").hidden=v!=="cal";$("#club").hidden=v!=="club";$("#rcp").hidden=v!=="rcp";document.body.classList.toggle("clubmode",v==="club");scrollTo(0,0);if(v==="cal")grid();if(v==="club"){cAll=false;clubPage()}if(v==="rcp")rcpPage();}
 const ov=$("#ov"),box=$("#box");
-function show(h){box.innerHTML=h+'<button class="chip x" data-x>Fermer</button>';ov.hidden=false}
+function show(h){delete box.dataset.i;box.innerHTML=h+'<button class="chip x" data-x>Fermer</button>';ov.hidden=false}
 function resBlock(e,i,rev){
+if(e.live){const p=e.ti.split(" - ");return spoil&&!rev&&!revS.has(i)?`<p class="res">🔴 En cours · <button class="chip sm" data-reveal="${i}">Afficher le score</button></p>`:`<p class="res" style="color:#ef4444">🔴 En direct${e.live.c?" · "+e.live.c:""}</p><div class="score"><span>${p[0]}</span><b>${e.live.hs} – ${e.live.as}</b><span>${p.slice(1).join(" - ")}</span></div>`}
 if((!e.fin||!e.sc)&&e.d<tk()&&(e.ti.includes(" - ")||/Course|Sprint|Qualifications|Pole/.test(e.ti)))return '<p class="meta">Résultat non disponible pour l\'instant.</p>';
 if(!e.fin||!e.sc)return "";
-if(spoil&&!rev)return `<p class="res">Terminé · <button class="chip sm" data-reveal="${i}">Afficher le score</button></p>`;
+if(spoil&&!rev&&!revS.has(i))return `<p class="res">Terminé · <button class="chip sm" data-reveal="${i}">Afficher le score</button></p>`;
 const p=pscore(e);
 return p?`<p class="meta">Terminé</p><div class="score"><span>${p.hn}</span><b>${p.h} – ${p.a}</b><span>${p.an}</span></div>`:`<p class="meta">Terminé</p><p class="res">${e.sc}</p>`;
 }
-function detail(i,rev){const e=EV[i],l=L[e.l];show(`<div class="badge" style="--c:${l.c}">${SP[l.sp].e}</div><h3>${e.ti}</h3><p class="meta">${dl(e.d)}${e.t?", "+hh(e.t):""}</p><p><span class="tag" style="--c:${l.c}">${l.n}</span></p>${resBlock(e,i,rev)}<p>${e.de}</p>${l.r?"":"<p class=\"meta\">Donnée d'exemple, à remplacer par la vraie.</p>"}`)}
+function detail(i,rev){detail0(i,rev);box.dataset.i=i}
+function detail0(i,rev){const e=EV[i],l=L[e.l];show(`<div class="badge" style="--c:${l.c}">${SP[l.sp].e}</div><h3>${e.ti}</h3><p class="meta">${dl(e.d)}${e.t?", "+hh(e.t):""}</p><p><span class="tag" style="--c:${l.c}">${l.n}</span></p>${resBlock(e,i,rev)}<p>${e.de}</p>${l.r?"":"<p class=\"meta\">Donnée d'exemple, à remplacer par la vraie.</p>"}`)}
 function grp(s){const[k,l]=s.split("|"),es=vis().filter(e=>e.d===k&&e.l===l);if(es.length===1)return detail(EV.indexOf(es[0]));show(`<h3>${L[l].f}</h3><p class="meta">${dl(k)}, ${es.length} ${unit(l)}</p>`+es.map(e=>`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(e)}">${e.t?hh(e.t)+", ":""}${e.ti}${shortRes(e)?" <b>"+shortRes(e)+"</b>":""}</button>`).join(""))}
 function day(k){const es=vis().filter(e=>e.d===k),G={};es.forEach(e=>(G[e.l]=G[e.l]||[]).push(e));show(`<h3>${dl(k)}</h3>`+(es.length?Object.entries(G).map(([l,g])=>g.length===1?`<button class="row" style="--c:${L[l].c}" data-ev="${EV.indexOf(g[0])}">${g[0].t?hh(g[0].t)+", ":""}${L[l].f} : ${g[0].ti}${shortRes(g[0])?" <b>"+shortRes(g[0])+"</b>":""}</button>`:`<button class="row" style="--c:${L[l].c}" data-g="${k}|${l}">${SP[L[l].sp].e} ${L[l].f}, ${g.length} ${unit(l)}</button>`).join(""):'<p class="meta">Aucun événement ce jour-là.</p>'))}
 document.addEventListener("click",ev=>{
@@ -403,7 +431,7 @@ if(D.sp){fav=D.sp==="fav";sp=fav?"all":D.sp;lg="all";tm="all";filters();grid()}
 else if(D.lg){lg=D.lg;tm="all";filters();grid()}
 else if(D.tm){tm=D.tm;filters();grid()}
 else if(D.ev!==undefined)detail(+D.ev);
-else if(D.reveal!==undefined)detail(+D.reveal,true);
+else if(D.reveal!==undefined){revS.add(+D.reveal);detail(+D.reveal,true)}
 else if(D.rs){rS=D.rs;rL="";rAll=false;rcpPage()}
 else if(D.rl){rL=D.rl;rAll=false;rcpPage()}
 else if(D.rt){rT=D.rt;rcpPage()}
@@ -427,7 +455,7 @@ else if(b.id==="today"){cur={y:Y,m:now.getMonth()};grid()}
 document.addEventListener("input",e=>{if(e.target.id==="tq")tres();if(e.target.id==="cq")cres()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")ov.hidden=true});
 addEventListener("resize",grid);
-Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{TM=j.teams||{};ST=j.standings||{};const mx={};j.events.forEach(e=>{if((j.real||[]).includes(e.l)&&(!mx[e.l]||e.d>mx[e.l]))mx[e.l]=e.d});EV=j.events.concat(m.events.filter(e=>!(mx[e.l]&&e.d<=mx[e.l]))).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));migrate();(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.entries(L).filter(([k,l])=>!l.r&&EV.some(e=>e.l===k)).map(([k,l])=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
+Promise.all(["data.json","manual.json"].map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>({events:[]})))).then(([j,m])=>{TM=j.teams||{};ST=j.standings||{};const mx={};j.events.forEach(e=>{if((j.real||[]).includes(e.l)&&(!mx[e.l]||e.d>mx[e.l]))mx[e.l]=e.d});EV=j.events.concat(m.events.filter(e=>!(mx[e.l]&&e.d<=mx[e.l]))).sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));migrate();(j.real||[]).forEach(k=>{if(L[k])L[k].r=1});const ex=Object.entries(L).filter(([k,l])=>!l.r&&EV.some(e=>e.l===k)).map(([k,l])=>l.f);$("#src").textContent=ex.length?"Données d'exemple (non réelles) : "+ex.join(", ")+". Les autres calendriers sont réels, certains sans horaires. Heure de Paris.":"Calendriers réels, certains sans horaires. Heure de Paris.";filters();grid();home();liveTick();if(j.updatedAt)$("#upd").textContent="Données mises à jour le "+new Date(j.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}).catch(()=>{$("#tl").innerHTML='<p class="empty">Impossible de charger les données.</p>'});
 </script>
 </body>
 </html>
